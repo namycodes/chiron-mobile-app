@@ -8,7 +8,7 @@ import Divider from "@/components/Divider";
 import { grayLightBorder, grayMediumBorder } from "@/constants/Colors";
 import { CardStyles, textStyles } from "@/constants/GlobalStyles";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { Doctor } from "@/types";
+import { HealthStore } from "@/store/HealthStore";
 import {
   FontAwesome,
   Ionicons,
@@ -16,8 +16,9 @@ import {
   SimpleLineIcons,
 } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Platform,
@@ -36,23 +37,6 @@ import Animated, {
 } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
-
-// Mock data - in a real app, this would come from API based on the ID
-const mockDoctor: Doctor = {
-  id: "1",
-  name: "Dr. Sarah Johnson",
-  specialty: "Cardiologist",
-  rating: 4.8,
-  experience: 12,
-  hospital: "City General Hospital",
-  distance: "2.5 km",
-  consultationFee: 150,
-  availability: "available",
-  image: "https://via.placeholder.com/300x400",
-  tags: ["Heart Specialist", "Emergency Care", "Pediatric Cardiology"],
-  isVerified: true,
-  gender: "female",
-};
 
 const reviews = [
   {
@@ -133,6 +117,12 @@ const availableTimeSlots = {
 export default function DoctorDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const {
+    getHealthPersonnelById,
+    personnelDetails,
+    loadingPersonnelDetails,
+    errorPersonnelDetails,
+  } = HealthStore();
 
   const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -146,6 +136,13 @@ export default function DoctorDetailsScreen() {
   const surfaceColor = useThemeColor({}, "surface");
   const textSecondaryColor = useThemeColor({}, "textSecondary");
   const borderColor = useThemeColor({}, "border");
+
+  // Fetch personnel details when component mounts
+  useEffect(() => {
+    if (id && typeof id === "string") {
+      getHealthPersonnelById(id);
+    }
+  }, [id]);
 
   const handleOpenActionSheet = () => {
     setIsActionSheetVisible(true);
@@ -237,309 +234,416 @@ export default function DoctorDetailsScreen() {
     return stars;
   };
 
+  // Loading state
+  if (loadingPersonnelDetails) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={primaryColor} />
+          <Text style={[styles.loadingText, { color: textSecondaryColor }]}>
+            Loading doctor details...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (errorPersonnelDetails) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#F44336" />
+          <Text style={[styles.errorText, { color: textColor }]}>
+            {errorPersonnelDetails}
+          </Text>
+          <ChironButton
+            title="Try Again"
+            onPress={() => {
+              if (id && typeof id === "string") {
+                getHealthPersonnelById(id);
+              }
+            }}
+            variant="primary"
+            style={styles.retryButton}
+          />
+          <ChironButton
+            title="Go Back"
+            onPress={() => router.back()}
+            variant="outline"
+            style={styles.retryButton}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // No data state
+  if (!personnelDetails) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons
+            name="person-outline"
+            size={64}
+            color={textSecondaryColor}
+          />
+          <Text style={[styles.errorText, { color: textColor }]}>
+            Doctor not found
+          </Text>
+          <ChironButton
+            title="Go Back"
+            onPress={() => router.back()}
+            variant="primary"
+            style={styles.retryButton}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container]}>
-      {/* Animated Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <View style={[styles.headerContent, { backgroundColor: surfaceColor }]}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color={textColor} />
-          </TouchableOpacity>
-          <Text
-            style={[styles.headerTitle, { color: textColor }]}
-            numberOfLines={1}
-          >
-            {mockDoctor.name}
+      {/* Loading State */}
+      {loadingPersonnelDetails && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={primaryColor} />
+          <Text style={[styles.loadingText, { color: textColor }]}>
+            Loading doctor details...
           </Text>
-          <TouchableOpacity style={styles.favoriteButton}>
-            <Ionicons name="heart-outline" size={24} color={primaryColor} />
-          </TouchableOpacity>
         </View>
-      </Animated.View>
+      )}
 
-      <Animated.ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        onScroll={(event) => {
-          scrollY.value = event.nativeEvent.contentOffset.y;
-        }}
-        scrollEventThrottle={16}
-      >
-        {/* Doctor Image */}
-        <View style={styles.imageSection}>
-          <Animated.Image
-            source={{ uri: mockDoctor.image }}
-            style={[styles.doctorImage, imageAnimatedStyle]}
-            sharedTransitionTag={`doctor-image-${mockDoctor.id}`}
+      {/* Error State */}
+      {errorPersonnelDetails && !loadingPersonnelDetails && (
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: "#F44336" }]}>
+            {errorPersonnelDetails}
+          </Text>
+          <ChironButton
+            title="Retry"
+            onPress={() =>
+              id && typeof id === "string" && getHealthPersonnelById(id)
+            }
+            variant="primary"
+            style={styles.retryButton}
           />
-
-          {/* Overlay controls */}
-          <View style={styles.imageOverlay}>
-            <TouchableOpacity
-              style={styles.backButtonOverlay}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.favoriteButtonOverlay}>
-              <Ionicons name="heart-outline" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
         </View>
+      )}
 
-        {/* Name of Doctor */}
-        <View style={styles.nameSection}>
-          <View
-            style={{ flexDirection: "row", justifyContent: "space-between" }}
-          >
-            <View>
-              <View
-                style={{ flexDirection: "row", gap: 5, alignItems: "center" }}
-              >
-                <FontAwesome
-                  name="stethoscope"
-                  size={20}
-                  color={primaryColor}
-                />
-                <Text style={[styles.institutionText, { color: primaryColor }]}>
-                  {mockDoctor.hospital}
-                </Text>
-              </View>
-
-              <View style={styles.nameRow}>
-                <Text style={[styles.doctorName, { color: textColor }]}>
-                  {mockDoctor.name}
-                </Text>
-                {mockDoctor.isVerified && (
-                  <MaterialIcons
-                    name="verified"
-                    size={20}
-                    color={primaryColor}
-                  />
-                )}
-              </View>
-            </View>
-            <ChironButton
-              title="Message"
-              onPress={handleOpenActionSheet}
-              variant="primary"
-              style={{ maxHeight: 45 }}
-            />
-          </View>
-
-          <Text style={[styles.specialty, { color: primaryColor }]}>
-            {mockDoctor.specialty}
-          </Text>
-
-          <View style={styles.availabilityContainer}>
+      {/* Content - only show when data is loaded */}
+      {personnelDetails && !loadingPersonnelDetails && (
+        <>
+          {/* Animated Header */}
+          <Animated.View style={[styles.header, headerAnimatedStyle]}>
             <View
-              style={[
-                styles.availabilityDot,
-                {
-                  backgroundColor: getAvailabilityColor(
-                    mockDoctor.availability
-                  ),
-                },
-              ]}
-            />
-            <Text style={[styles.availabilityText, { color: textColor }]}>
-              Available now
-            </Text>
-          </View>
-        </View>
-
-        {/* Experience - Review Rating */}
-        <View style={styles.statsSection}>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <View style={styles.statInerStyle}>
-                <SimpleLineIcons
-                  name="handbag"
-                  size={20}
-                  color={grayMediumBorder}
-                />
-                <Text style={[styles.statNumber, { color: textColor }]}>
-                  {mockDoctor.experience} years
-                </Text>
-              </View>
-
-              <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
-                Work Experience
+              style={[styles.headerContent, { backgroundColor: surfaceColor }]}
+            >
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+              >
+                <Ionicons name="arrow-back" size={24} color={textColor} />
+              </TouchableOpacity>
+              <Text
+                style={[styles.headerTitle, { color: textColor }]}
+                numberOfLines={1}
+              >
+                {personnelDetails.firstName} {personnelDetails.lastName}
               </Text>
+              <TouchableOpacity style={styles.favoriteButton}>
+                <Ionicons name="heart-outline" size={24} color={primaryColor} />
+              </TouchableOpacity>
             </View>
+          </Animated.View>
 
-            <View style={styles.statItem}>
-              <View style={styles.statInerStyle}>
-                <Ionicons
-                  name="star-outline"
-                  size={20}
-                  color={grayMediumBorder}
-                />
-                <Text style={[styles.statNumber, { color: textColor }]}>
-                  {mockDoctor.rating}
-                </Text>
-              </View>
-
-              <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
-                Reviews (127)
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* About */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>
-            About Doctor
-          </Text>
-
-          <Text style={[styles.aboutText, { color: textSecondaryColor }]}>
-            Dr. Sarah Johnson is a highly experienced cardiologist with over 12
-            years of practice. She specializes in preventive cardiology, heart
-            disease management, and emergency cardiac care. Dr. Johnson is known
-            for her compassionate approach to patient care and her expertise in
-            the latest cardiac treatment methods.
-            {"\n\n"}
-            She completed her medical degree from Harvard Medical School and her
-            cardiology residency at Johns Hopkins Hospital. Dr. Johnson is
-            board-certified and a member of the American College of Cardiology.
-          </Text>
-        </View>
-
-        {/* Specializations */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>
-            Specializations
-          </Text>
-          <View style={styles.specializationsContainer}>
-            {mockDoctor.tags.map((tag, index) => (
-              <ChironChip
-                key={index}
-                label={tag}
-                size="small"
-                style={styles.specializationChip}
+          <Animated.ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            onScroll={(event) => {
+              scrollY.value = event.nativeEvent.contentOffset.y;
+            }}
+            scrollEventThrottle={16}
+          >
+            {/* Doctor Image */}
+            <View style={styles.imageSection}>
+              <Animated.Image
+                source={{ uri: personnelDetails.profilePicture }}
+                style={[styles.doctorImage, imageAnimatedStyle]}
+                sharedTransitionTag={`doctor-image-${personnelDetails.id}`}
               />
-            ))}
-          </View>
-        </View>
 
-        {/* Working Hours */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>
-            Working Hours
-          </Text>
-          <ChironCard style={styles.workingHoursCard} variant="default">
-            {[
-              { day: "Monday", hours: "9:00 AM - 5:00 PM" },
-              { day: "Tuesday", hours: "9:00 AM - 5:00 PM" },
-              { day: "Wednesday", hours: "9:00 AM - 5:00 PM" },
-              { day: "Thursday", hours: "9:00 AM - 5:00 PM" },
-              { day: "Friday", hours: "9:00 AM - 3:00 PM" },
-              { day: "Saturday", hours: "10:00 AM - 2:00 PM" },
-              { day: "Sunday", hours: "Closed" },
-            ].map((schedule, index) => (
-              <View key={index} style={styles.scheduleRow}>
-                <Text style={[styles.scheduleDay, { color: textColor }]}>
-                  {schedule.day}
-                </Text>
-                <Text
+              {/* Overlay controls */}
+              <View style={styles.imageOverlay}>
+                <TouchableOpacity
+                  style={styles.backButtonOverlay}
+                  onPress={() => router.back()}
+                >
+                  <Ionicons name="arrow-back" size={24} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.favoriteButtonOverlay}>
+                  <Ionicons name="heart-outline" size={24} color="white" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Name of Doctor */}
+            <View style={styles.nameSection}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      gap: 5,
+                      alignItems: "center",
+                    }}
+                  >
+                    <FontAwesome
+                      name="stethoscope"
+                      size={20}
+                      color={primaryColor}
+                    />
+                    <Text
+                      style={[styles.institutionText, { color: primaryColor }]}
+                    >
+                      {personnelDetails.hospitalName}
+                    </Text>
+                  </View>
+
+                  <View style={styles.nameRow}>
+                    <Text style={[styles.doctorName, { color: textColor }]}>
+                      {personnelDetails.firstName} {personnelDetails.lastName}
+                    </Text>
+                    {personnelDetails.isVerified && (
+                      <MaterialIcons
+                        name="verified"
+                        size={20}
+                        color={primaryColor}
+                      />
+                    )}
+                  </View>
+                </View>
+                <ChironButton
+                  title="Message"
+                  onPress={handleOpenActionSheet}
+                  variant="primary"
+                  style={{ maxHeight: 45 }}
+                />
+              </View>
+
+              <Text style={[styles.specialty, { color: primaryColor }]}>
+                {personnelDetails.specialty}
+              </Text>
+
+              <View style={styles.availabilityContainer}>
+                <View
                   style={[
-                    styles.scheduleHours,
+                    styles.availabilityDot,
                     {
-                      color:
-                        schedule.hours === "Closed"
-                          ? "#F44336"
-                          : textSecondaryColor,
+                      backgroundColor: "#4CAF50", // Available
                     },
                   ]}
-                >
-                  {schedule.hours}
+                />
+                <Text style={[styles.availabilityText, { color: textColor }]}>
+                  Available now
                 </Text>
               </View>
-            ))}
-          </ChironCard>
-        </View>
+            </View>
 
-        {/* Reviews */}
-        <View style={styles.section}>
-          <View style={styles.reviewsHeader}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>
-              Reviews (127)
-            </Text>
-            <TouchableOpacity>
-              <Text style={[styles.seeAllText, { color: primaryColor }]}>
-                See All
+            {/* Experience - Review Rating */}
+            <View style={styles.statsSection}>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <View style={styles.statInerStyle}>
+                    <SimpleLineIcons
+                      name="handbag"
+                      size={20}
+                      color={grayMediumBorder}
+                    />
+                    <Text style={[styles.statNumber, { color: textColor }]}>
+                      {personnelDetails.experience} years
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={[styles.statLabel, { color: textSecondaryColor }]}
+                  >
+                    Work Experience
+                  </Text>
+                </View>
+
+                <View style={styles.statItem}>
+                  <View style={styles.statInerStyle}>
+                    <Ionicons
+                      name="star-outline"
+                      size={20}
+                      color={grayMediumBorder}
+                    />
+                    <Text style={[styles.statNumber, { color: textColor }]}>
+                      {personnelDetails.rating}
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={[styles.statLabel, { color: textSecondaryColor }]}
+                  >
+                    Reviews (127)
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Contact Information */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>
+                Contact Information
               </Text>
-            </TouchableOpacity>
-          </View>
+              <ChironCard style={styles.workingHoursCard} variant="default">
+                <View style={styles.scheduleRow}>
+                  <Text style={[styles.scheduleDay, { color: textColor }]}>
+                    Phone
+                  </Text>
+                  <Text
+                    style={[
+                      styles.scheduleHours,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    {personnelDetails.phoneNumber || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.scheduleRow}>
+                  <Text style={[styles.scheduleDay, { color: textColor }]}>
+                    Email
+                  </Text>
+                  <Text
+                    style={[
+                      styles.scheduleHours,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    {personnelDetails.email || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.scheduleRow}>
+                  <Text style={[styles.scheduleDay, { color: textColor }]}>
+                    NHIMA Number
+                  </Text>
+                  <Text
+                    style={[
+                      styles.scheduleHours,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    {personnelDetails.nhimaNumber || "N/A"}
+                  </Text>
+                </View>
+              </ChironCard>
+            </View>
 
-          {reviews.slice(0, 3).map((review) => (
-            <ChironCard
-              key={review.id}
-              style={styles.reviewCard}
-              variant="default"
+            {/* Specializations */}
+            {personnelDetails.tags && personnelDetails.tags.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>
+                  Specializations
+                </Text>
+                <View style={styles.specializationsContainer}>
+                  {personnelDetails.tags.map((tag, index) => (
+                    <ChironChip
+                      key={index}
+                      label={tag}
+                      size="small"
+                      style={styles.specializationChip}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Working Hours */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>
+                Working Hours
+              </Text>
+              <ChironCard style={styles.workingHoursCard} variant="default">
+                {[
+                  { day: "Monday", hours: "9:00 AM - 5:00 PM" },
+                  { day: "Tuesday", hours: "9:00 AM - 5:00 PM" },
+                  { day: "Wednesday", hours: "9:00 AM - 5:00 PM" },
+                  { day: "Thursday", hours: "9:00 AM - 5:00 PM" },
+                  { day: "Friday", hours: "9:00 AM - 3:00 PM" },
+                  { day: "Saturday", hours: "10:00 AM - 2:00 PM" },
+                  { day: "Sunday", hours: "Closed" },
+                ].map((schedule, index) => (
+                  <View key={index} style={styles.scheduleRow}>
+                    <Text style={[styles.scheduleDay, { color: textColor }]}>
+                      {schedule.day}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.scheduleHours,
+                        {
+                          color:
+                            schedule.hours === "Closed"
+                              ? "#F44336"
+                              : textSecondaryColor,
+                        },
+                      ]}
+                    >
+                      {schedule.hours}
+                    </Text>
+                  </View>
+                ))}
+              </ChironCard>
+            </View>
+
+            {/* Bottom padding for floating button */}
+            <View style={styles.bottomPadding} />
+          </Animated.ScrollView>
+
+          {/* Floating Action Button */}
+          <ChironBottomSheet
+            handleVisible={false}
+            initialIndex={1}
+            snapPoints={["10%"]}
+            panDownClose={false}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: 20,
+              }}
             >
-              <View style={styles.reviewHeader}>
-                <Text style={[styles.reviewerName, { color: textColor }]}>
-                  {review.patientName}
+              <View>
+                <Text style={{ color: grayMediumBorder }}>
+                  Consultation fee
                 </Text>
-                <Text
-                  style={[styles.reviewDate, { color: textSecondaryColor }]}
-                >
-                  {review.date}
+                <Text style={{ fontWeight: "bold", fontSize: 18 }}>
+                  K{personnelDetails.rate}
                 </Text>
               </View>
-              <View style={styles.reviewRating}>
-                {renderStars(review.rating)}
-              </View>
-              <Text
-                style={[styles.reviewComment, { color: textSecondaryColor }]}
-              >
-                {review.comment}
-              </Text>
-            </ChironCard>
-          ))}
-        </View>
 
-        {/* Bottom padding for floating button */}
-        <View style={styles.bottomPadding} />
-      </Animated.ScrollView>
+              <ChironButton
+                title="Schedule Appointment"
+                onPress={handleOpenActionSheet}
+                variant="primary"
+                style={styles.bookButton}
+              />
+            </View>
+          </ChironBottomSheet>
+        </>
+      )}
 
-      {/* Floating Action Button */}
-      <ChironBottomSheet
-        handleVisible={false}
-        initialIndex={1}
-        snapPoints={["10%"]}
-        panDownClose={false}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: 20,
-          }}
-        >
-          <View>
-            <Text style={{ color: grayMediumBorder }}>Consultation fee</Text>
-            <Text style={{ fontWeight: "bold", fontSize: 18 }}>K150</Text>
-          </View>
-
-          <ChironButton
-            title="Schedule Appointment"
-            onPress={handleOpenActionSheet}
-            variant="primary"
-            style={styles.bookButton}
-          />
-        </View>
-      </ChironBottomSheet>
-
-      {/* Bottom Sheet */}
+      {/* Bottom Sheet for scheduling */}
       <ChironBottomSheet ref={bottomSheetRef}>
-        {isActionSheetVisible && (
+        {isActionSheetVisible && personnelDetails && (
           <View style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <Text style={[styles.bottomSheetTitle, { color: textColor }]}>
@@ -573,7 +677,7 @@ export default function DoctorDetailsScreen() {
                   ]}
                 >
                   <Image
-                    source={{ uri: "https://github.com/namycodes.png" }}
+                    source={{ uri: personnelDetails.profilePicture }}
                     style={{
                       width: 32,
                       height: 32,
@@ -589,7 +693,7 @@ export default function DoctorDetailsScreen() {
                       fontWeight: "bold",
                     }}
                   >
-                    {mockDoctor.name}
+                    {personnelDetails.firstName} {personnelDetails.lastName}
                   </Text>
                   <Text
                     style={{
@@ -597,7 +701,7 @@ export default function DoctorDetailsScreen() {
                       color: primaryColor,
                     }}
                   >
-                    {mockDoctor.hospital}
+                    {personnelDetails.hospitalName}
                   </Text>
                 </View>
               </View>
@@ -625,7 +729,7 @@ export default function DoctorDetailsScreen() {
                       fontWeight: "bold",
                     }}
                   >
-                    {mockDoctor.hospital}
+                    {personnelDetails.hospitalName}
                   </Text>
                   <Text
                     style={{
@@ -863,6 +967,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
+    textAlign: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  retryButton: {
+    marginTop: 12,
+    minWidth: 120,
   },
   header: {
     position: "absolute",
@@ -1143,8 +1274,8 @@ const styles = StyleSheet.create({
   bottomSheetContent: {
     flex: 1,
     paddingHorizontal: 20,
-      paddingBottom: 20,
-    gap: 8
+    paddingBottom: 20,
+    gap: 8,
   },
   bottomSheetHeader: {
     flexDirection: "row",

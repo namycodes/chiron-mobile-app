@@ -1,13 +1,15 @@
+import { useThemeColor } from "@/hooks/useThemeColor";
+import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-  View,
-  TextInput,
   StyleSheet,
   Text,
-  ViewStyle,
+  TextInput,
   TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from "react-native";
-import { useThemeColor } from "@/hooks/useThemeColor";
 
 interface ChironInputProps {
   label?: string;
@@ -23,6 +25,10 @@ interface ChironInputProps {
   numberOfLines?: number;
   style?: ViewStyle;
   inputStyle?: TextStyle;
+  leftIcon?: keyof typeof Ionicons.glyphMap;
+  rightIcon?: keyof typeof Ionicons.glyphMap;
+  onRightIconPress?: () => void;
+  showPasswordToggle?: boolean;
 }
 
 export function ChironInput({
@@ -39,8 +45,13 @@ export function ChironInput({
   numberOfLines = 1,
   style,
   inputStyle,
+  leftIcon,
+  rightIcon,
+  onRightIconPress,
+  showPasswordToggle = false,
 }: ChironInputProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(!secureTextEntry);
 
   const textColor = useThemeColor({}, "text");
   const textSecondary = useThemeColor({}, "textSecondary");
@@ -54,6 +65,63 @@ export function ChironInput({
     if (error) return errorColor;
     if (isFocused) return primaryColor;
     return borderColor;
+  };
+
+  const togglePasswordVisibility = () => {
+    setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  const renderLeftIcon = () => {
+    if (!leftIcon) return null;
+
+    return (
+      <View style={styles.iconContainer}>
+        <Ionicons
+          name={leftIcon}
+          size={20}
+          color={isFocused ? primaryColor : textSecondary}
+        />
+      </View>
+    );
+  };
+
+  const renderRightIcon = () => {
+    // Show password toggle if it's a password field and showPasswordToggle is true
+    if (secureTextEntry && showPasswordToggle) {
+      return (
+        <TouchableOpacity
+          onPress={togglePasswordVisibility}
+          style={styles.iconContainer}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
+            size={20}
+            color={textSecondary}
+          />
+        </TouchableOpacity>
+      );
+    }
+
+    // Show custom right icon
+    if (rightIcon) {
+      return (
+        <TouchableOpacity
+          onPress={onRightIconPress}
+          style={styles.iconContainer}
+          activeOpacity={0.7}
+          disabled={!onRightIconPress}
+        >
+          <Ionicons
+            name={rightIcon}
+            size={20}
+            color={isFocused ? primaryColor : textSecondary}
+          />
+        </TouchableOpacity>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -77,12 +145,17 @@ export function ChironInput({
           },
         ]}
       >
+        {renderLeftIcon()}
+
         <TextInput
           style={[
             styles.input,
             { color: textColor },
             multiline && styles.multilineInput,
             disabled && styles.disabledInput,
+            leftIcon && styles.inputWithLeftIcon,
+            (rightIcon || (secureTextEntry && showPasswordToggle)) &&
+              styles.inputWithRightIcon,
             inputStyle,
           ]}
           placeholder={placeholder}
@@ -91,13 +164,16 @@ export function ChironInput({
           onChangeText={onChangeText}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          secureTextEntry={secureTextEntry}
+          secureTextEntry={secureTextEntry && !isPasswordVisible}
           keyboardType={keyboardType}
           editable={!disabled}
           multiline={multiline}
           numberOfLines={numberOfLines}
           textAlignVertical={multiline ? "top" : "center"}
+          autoCapitalize="none"
         />
+
+        {renderRightIcon()}
       </View>
 
       {error && (
@@ -122,15 +198,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10, // Reduced from 12
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 48, // Reduced from default
   },
   input: {
     fontSize: 16,
-    minHeight: 24,
+    flex: 1,
+    minHeight: 20, // Reduced from 24
+    paddingVertical: 0, // Remove default padding
+  },
+  inputWithLeftIcon: {
+    marginLeft: 12,
+  },
+  inputWithRightIcon: {
+    marginRight: 12,
+  },
+  iconContainer: {
+    padding: 4,
+    justifyContent: "center",
+    alignItems: "center",
   },
   multilineInput: {
     minHeight: 80,
     paddingTop: 12,
+    textAlignVertical: "top",
   },
   disabledInput: {
     opacity: 0.6,

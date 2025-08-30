@@ -13,14 +13,14 @@ export interface User {
 }
 
 export enum UserRole {
-  PATIENT = 'patient',
-  HEALTH_PERSONNEL = 'health_personnel',
-  PHARMACY = 'pharmacy'
+  USER = 'USER',
+  HEALTH_PERSONNEL = 'HEALTH_PERSONNEL',
+  DRUG_STORE = 'DRUG_STORE'
 }
 
 // Patient Interface
 export interface Patient extends User {
-  role: UserRole.PATIENT;
+  role: UserRole.USER;
   medicalHistory?: string[];
   emergencyContact?: EmergencyContact;
   bloodType?: string;
@@ -29,25 +29,25 @@ export interface Patient extends User {
 }
 
 // Health Personnel Interface
-export interface HealthPersonnel extends User {
-  role: UserRole.HEALTH_PERSONNEL;
-  specialty: Specialty;
-  licenseNumber: string;
-  yearsOfExperience: number;
-  bio: string;
-  serviceRates: ServiceRate[];
-  documents: Document[];
-  isPrivateAffiliated: boolean;
-  institutionName?: string;
-  availability: Availability[];
-  location: Location;
-  rating: number;
-  reviewCount: number;
-}
+// export interface HealthPersonnel extends User {
+//   role: UserRole.HEALTH_PERSONNEL;
+//   specialty: Specialty;
+//   licenseNumber: string;
+//   yearsOfExperience: number;
+//   bio: string;
+//   serviceRates: ServiceRate[];
+//   documents: Document[];
+//   isPrivateAffiliated: boolean;
+//   institutionName?: string;
+//   availability: Availability[];
+//   location: Location;
+//   rating: number;
+//   reviewCount: number;
+// }
 
 // Pharmacy Interface
 export interface Pharmacy extends User {
-  role: UserRole.PHARMACY;
+  role: UserRole.DRUG_STORE;
   pharmacyName: string;
   licenseNumber: string;
   location: Location;
@@ -321,3 +321,57 @@ export interface LoginResponse {
   message: string, 
   statusCode: number
 }
+
+export interface HealthPersonnel {
+  id: string;
+  profilePicture: string;
+  firstName: string;
+  lastName: string;
+  isVerified: boolean;
+  hospitalName: string;
+  rating: number; 
+  experience: number; 
+  specialty: string;
+  rate: number;
+}
+
+export interface HealthPersonnelViewModel extends HealthPersonnel {
+  nhimaNumber: string;
+  phoneNumber: string;
+  tags: string[];
+  email: string;
+}
+
+// ------------------ Drug Store ------------------
+
+export interface DrugStore {
+  id: string;
+  name: string;
+  address: string;
+  isVerified: boolean;
+  rating: number;
+  profilePicture: string;
+}
+
+export interface DrugStoreViewModel extends DrugStore {
+  email: string;
+  nhimaNumber: string;
+  phoneNumber: string;
+}
+
+export interface HealthPersonnelResponse {
+  data: {
+    personnel: HealthPersonnel[]
+  },
+  message: string,
+  statusCode: number
+}
+
+export interface HealthPersonnelDetailsResponse {
+  data: {
+    personnel: HealthPersonnelViewModel
+  },
+  message: string,
+  statusCode: number
+}
+

@@ -1,10 +1,10 @@
+import { AuthStore } from "@/store/AuthStore";
 import { Redirect, Stack } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
 
 export default function AuthLayout() {
-  const { isAuthenticated } = useAuth();
+  const { token, role } = AuthStore();
 
-  if (isAuthenticated) {
+  if (token && role != null || role != undefined) {
     return <Redirect href="/(tabs)" />;
   }
 

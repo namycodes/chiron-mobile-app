@@ -1,4 +1,4 @@
-import { Tabs, Redirect } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
 
@@ -6,20 +6,15 @@ import { HapticTab } from "@/components/HapticTab";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/types";
-import {
-  AntDesign,
-  FontAwesome,
-  FontAwesome6,
-  SimpleLineIcons,
-} from "@expo/vector-icons";
+import { AntDesign, FontAwesome, SimpleLineIcons } from "@expo/vector-icons";
+import { AuthStore } from "@/store/AuthStore";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { user, isAuthenticated } = useAuth();
-
-  if (!isAuthenticated || !user) {
+  const {token, role} = AuthStore()
+console.log("User role: ", role)
+  if (!token) {
     return <Redirect href="/(auth)/signin" />;
   }
 
@@ -29,7 +24,7 @@ export default function TabLayout() {
       {
         name: "index" as const,
         options: {
-          title: user.role === UserRole.PATIENT ? "Home" : "Dashboard",
+          title: role === UserRole.USER ? "Home" : "Dashboard",
           tabBarIcon: ({ color }: { color: string }) => (
             <AntDesign size={28} name="home" color={color} />
           ),
@@ -39,8 +34,8 @@ export default function TabLayout() {
 
     let roleScreens: any[] = [];
 
-    switch (user.role) {
-      case UserRole.PATIENT:
+    switch (role) {
+      case UserRole.USER:
         roleScreens = [
           {
             name: "doctors/index" as const,
@@ -95,7 +90,7 @@ export default function TabLayout() {
         ];
         break;
 
-      case UserRole.PHARMACY:
+      case UserRole.DRUG_STORE:
         roleScreens = [
           {
             name: "inventory" as const,
@@ -140,41 +135,39 @@ export default function TabLayout() {
   ];
 
   return (
-  
-      <Tabs
-        screenOptions={{
-          tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-          headerShown: false,
-          tabBarButton: HapticTab,
-          tabBarBackground: TabBarBackground,
-          tabBarStyle: Platform.select({
-            ios: {
-              position: "absolute",
-            },
-            default: {},
-          }),
-        }}
-      >
-        {/* Render visible tabs based on user role */}
-        {getScreensConfig().map((screen) => (
-          <Tabs.Screen
-            key={screen.name}
-            name={screen.name}
-            options={screen.options}
-          />
-        ))}
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        headerShown: false,
+        tabBarButton: HapticTab,
+        tabBarBackground: TabBarBackground,
+        tabBarStyle: Platform.select({
+          ios: {
+            position: "absolute",
+          },
+          default: {},
+        }),
+      }}
+    >
+      {/* Render visible tabs based on user role */}
+      {getScreensConfig().map((screen) => (
+        <Tabs.Screen
+          key={screen.name}
+          name={screen.name}
+          options={screen.options}
+        />
+      ))}
 
-        {/* Hidden screens */}
-        {hiddenScreens.map((screen) => (
-          <Tabs.Screen
-            key={screen.name}
-            name={screen.name}
-            options={{
-              href: null,
-            }}
-          />
-        ))}
-      </Tabs>
-
+      {/* Hidden screens */}
+      {hiddenScreens.map((screen) => (
+        <Tabs.Screen
+          key={screen.name}
+          name={screen.name}
+          options={{
+            href: null,
+          }}
+        />
+      ))}
+    </Tabs>
   );
 }

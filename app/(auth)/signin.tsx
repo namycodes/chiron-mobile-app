@@ -1,41 +1,35 @@
-import React, { useState } from "react";
-import { View, StyleSheet, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import { ChironButton } from "@/components/ChironButton";
 import { ChironInput } from "@/components/ChironInput";
-import { useAuth } from "@/context/AuthContext";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { AuthStore } from "@/store/AuthStore";
+import { router } from "expo-router";
+import React, { useState } from "react";
+import { Alert, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const { signIn } = useAuth();
+  const { login, loading } = AuthStore();
 
   const handleSignIn = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
-
-    setLoading(true);
-    try {
-      const success = await signIn(email, password);
-      if (success) {
-        router.replace("/(tabs)");
-      } else {
-        Alert.alert("Error", "Invalid credentials. Please try again.");
-      }
-    } catch (error) {
-      Alert.alert("Error", "An error occurred. Please try again.");
-    } finally {
-      setLoading(false);
+    // login now returns a boolean indicating success
+    const success = await login(email, password);
+    if (!success) {
+      const store = AuthStore();
+      const errMsg = store.message || store.error || "Invalid credentials";
+      Alert.alert("Error", errMsg);
+      return;
     }
+    // successful login -> navigate
+    router.replace("/(tabs)");
   };
-
   return (
     <SafeAreaView style={styles.container}>
       <ThemedView style={styles.content}>
@@ -55,6 +49,7 @@ export default function SignInScreen() {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
+            leftIcon="mail-outline"
             required
           />
 
@@ -64,6 +59,8 @@ export default function SignInScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            leftIcon="lock-closed-outline"
+            showPasswordToggle
             required
           />
 

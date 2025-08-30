@@ -1,14 +1,13 @@
+import {AuthStore}  from "@/store/AuthStore";
 import { RequestOptions } from "@/types";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL
-
 export async function ApiRequest<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
     
-  const token = await AsyncStorage.getItem("token");
+  const token = AuthStore.getState().token;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

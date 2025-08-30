@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         firstName: "John",
         lastName: "Doe",
         phoneNumber: "+1234567890",
-        role: UserRole.PATIENT,
+        role: UserRole.USER,
         isVerified: true,
         createdAt: new Date(),
         updatedAt: new Date(),

@@ -2,6 +2,7 @@ import { ChironButton } from "@/components/ChironButton";
 import { ChironCard } from "@/components/ChironCard";
 import { grayLightBorder } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { AuthStore } from "@/store/AuthStore";
 import {
   Feather,
   FontAwesome,
@@ -64,6 +65,7 @@ const mockUser = {
 export default function Profile() {
   const router = useRouter();
   const [showMedicalInfo, setShowMedicalInfo] = useState(false);
+  const {logout} = AuthStore()
 
   const textColor = useThemeColor({}, "text");
   const primaryColor = useThemeColor({}, "primary");
@@ -81,9 +83,9 @@ export default function Profile() {
       {
         text: "Logout",
         style: "destructive",
-        onPress: () => {
-          // Handle logout logic here
-          console.log("User logged out");
+        onPress:async () => {
+          await logout()
+          router.replace("/(auth)/signin")
         },
       },
     ]);

@@ -1,13 +1,13 @@
-import React, { useState } from "react";
-import { View, StyleSheet, Alert, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import { ChironButton } from "@/components/ChironButton";
 import { ChironInput } from "@/components/ChironInput";
-import { useAuth } from "@/context/AuthContext";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { useAuth } from "@/store/AuthContext";
 import { UserRole } from "@/types";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useState } from "react";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignUpScreen() {
   const { role } = useLocalSearchParams<{ role: UserRole }>();
@@ -147,6 +147,7 @@ export default function SignUpScreen() {
                   onChangeText={(value) =>
                     handleInputChange("firstName", value)
                   }
+                  leftIcon="person-outline"
                   required
                 />
               </View>
@@ -156,6 +157,7 @@ export default function SignUpScreen() {
                   placeholder="Enter last name"
                   value={formData.lastName}
                   onChangeText={(value) => handleInputChange("lastName", value)}
+                  leftIcon="person-outline"
                   required
                 />
               </View>
@@ -167,6 +169,7 @@ export default function SignUpScreen() {
               value={formData.email}
               onChangeText={(value) => handleInputChange("email", value)}
               keyboardType="email-address"
+              leftIcon="mail-outline"
               required
             />
 
@@ -176,6 +179,7 @@ export default function SignUpScreen() {
               value={formData.phoneNumber}
               onChangeText={(value) => handleInputChange("phoneNumber", value)}
               keyboardType="phone-pad"
+              leftIcon="call-outline"
               required
             />
 
@@ -185,6 +189,8 @@ export default function SignUpScreen() {
               value={formData.password}
               onChangeText={(value) => handleInputChange("password", value)}
               secureTextEntry
+              leftIcon="lock-closed-outline"
+              showPasswordToggle
               required
             />
 
@@ -196,6 +202,8 @@ export default function SignUpScreen() {
                 handleInputChange("confirmPassword", value)
               }
               secureTextEntry
+              leftIcon="lock-closed-outline"
+              showPasswordToggle
               required
             />
 

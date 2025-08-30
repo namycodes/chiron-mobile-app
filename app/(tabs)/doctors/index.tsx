@@ -7,12 +7,14 @@ import { ChironChip } from "@/components/ChironChip";
 import Divider from "@/components/Divider";
 import { grayLightBorder } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { Doctor } from "@/types";
+import { HealthStore } from "@/store/HealthStore";
+import { HealthPersonnel, HealthPersonnelViewModel } from "@/types";
 import { Ionicons, MaterialIcons, SimpleLineIcons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Platform,
   SafeAreaView,
@@ -24,68 +26,6 @@ import {
   View,
 } from "react-native";
 import Animated from "react-native-reanimated";
-const mockDoctors: Doctor[] = [
-  {
-    id: "1",
-    name: "Dr. Sarah Johnson",
-    specialty: "Cardiologist",
-    rating: 4.8,
-    experience: 12,
-    hospital: "City General Hospital",
-    distance: "2.5 km",
-    consultationFee: 150,
-    availability: "available",
-    image: "https://via.placeholder.com/300x400",
-    tags: ["Heart Specialist", "Emergency Care"],
-    isVerified: true,
-    gender: "female",
-  },
-  {
-    id: "2",
-    name: "Dr. Michael Chen",
-    specialty: "Pediatrician",
-    rating: 4.9,
-    experience: 8,
-    hospital: "Children's Medical Center",
-    distance: "1.8 km",
-    consultationFee: 120,
-    availability: "available",
-    image: "https://via.placeholder.com/300x400",
-    tags: ["Child Care", "Vaccines"],
-    isVerified: true,
-    gender: "male",
-  },
-  {
-    id: "3",
-    name: "Dr. Emily Rodriguez",
-    specialty: "Dermatologist",
-    rating: 4.7,
-    experience: 15,
-    hospital: "Skin Care Clinic",
-    distance: "3.2 km",
-    consultationFee: 180,
-    availability: "busy",
-    image: "https://via.placeholder.com/300x400",
-    tags: ["Skin Care", "Cosmetic"],
-    isVerified: false,
-    gender: "female",
-  },
-  {
-    id: "4",
-    name: "Dr. David Kumar",
-    specialty: "Orthopedic",
-    rating: 4.6,
-    experience: 20,
-    hospital: "Bone & Joint Center",
-    distance: "4.1 km",
-    consultationFee: 200,
-    availability: "available",
-    image: "https://via.placeholder.com/300x400",
-    tags: ["Bone Care", "Sports Medicine"],
-    isVerified: true,
-    gender: "male",
-  },
-];
 
 const specialties = [
   "All",
@@ -99,16 +39,24 @@ const specialties = [
 export default function Doctors() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("All");
-  const [filteredDoctors, setFilteredDoctors] = useState(mockDoctors);
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  type SelectedDoctorType = HealthPersonnel & Partial<HealthPersonnelViewModel>;
+  const [selectedDoctor, setSelectedDoctor] =
+    useState<SelectedDoctorType | null>(null);
   const [actionType, setActionType] = useState<"book" | "view">("book");
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
   const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
+  const { getHealthPersonnel, personnel, loadingPersonnel } = HealthStore();
+
+  useEffect(() => {
+    getHealthPersonnel();
+  }, []);
 
   // Filter states
   const [priceRange, setPriceRange] = useState([50, 300]);
   const [minExperience, setMinExperience] = useState(0);
   const [selectedGender, setSelectedGender] = useState<string>("All");
+  // Filtered list derived from the fetched personnel
+  const [filteredDoctors, setFilteredDoctors] = useState<HealthPersonnel[]>([]);
 
   const bottomSheetRef = useRef<ChironBottomSheetHandles>(null);
   const filterSheetRef = useRef<ChironBottomSheetHandles>(null);
@@ -118,10 +66,15 @@ export default function Doctors() {
   const textSecondaryColor = useThemeColor({}, "textSecondary");
   const borderColor = useThemeColor({}, "border");
 
+  // Whenever the source personnel changes, reset the filtered list
+  useEffect(() => {
+    setFilteredDoctors(personnel ?? []);
+  }, [personnel]);
+
   // Re-apply filters when filter parameters change
   useEffect(() => {
     filterDoctors(searchQuery, selectedSpecialty);
-  }, [priceRange, minExperience, selectedGender]);
+  }, [priceRange, minExperience, selectedGender, selectedSpecialty]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -130,62 +83,73 @@ export default function Doctors() {
 
   const handleSpecialtyFilter = (specialty: string) => {
     setSelectedSpecialty(specialty);
+    // Apply immediately with the chosen specialty
     filterDoctors(searchQuery, specialty);
   };
 
   const filterDoctors = (query: string, specialty: string) => {
-    let filtered = mockDoctors;
+    const list = personnel ?? [];
+    const q = query?.trim().toLowerCase() ?? "";
 
-    // Filter by specialty
-    if (specialty !== "All") {
-      filtered = filtered.filter((doctor) => doctor.specialty === specialty);
-    }
+    const results = list.filter((doctor) => {
+      // Specialty filter
+      if (specialty && specialty !== "All") {
+        const docSpec = (doctor.specialty || "").toLowerCase();
+        if (!docSpec.includes(specialty.toLowerCase())) return false;
+      }
 
-    // Filter by search query
-    if (query.trim() !== "") {
-      filtered = filtered.filter(
-        (doctor) =>
-          doctor.name.toLowerCase().includes(query.toLowerCase()) ||
-          doctor.specialty.toLowerCase().includes(query.toLowerCase()) ||
-          doctor.hospital.toLowerCase().includes(query.toLowerCase())
-      );
-    }
-
-    // Apply additional filters
-    filtered = filtered.filter((doctor) => {
       // Price range filter
-      const withinPriceRange =
-        doctor.consultationFee >= priceRange[0] &&
-        doctor.consultationFee <= priceRange[1];
+      const rate = Number((doctor as any).rate) || 0;
+      if (rate < priceRange[0] || rate > priceRange[1]) return false;
 
       // Experience filter
-      const meetsExperience = doctor.experience >= minExperience;
+      const exp = Number((doctor as any).experience) || 0;
+      if (exp < minExperience) return false;
 
       // Gender filter
-      const meetsGender =
-        selectedGender === "All" ||
-        doctor.gender === selectedGender.toLowerCase();
+      if (selectedGender && selectedGender !== "All") {
+        const g = (doctor as any).gender || "";
+        if (g.toLowerCase() !== selectedGender.toLowerCase()) return false;
+      }
 
-      return withinPriceRange && meetsExperience && meetsGender;
+      // Search query across multiple fields
+      if (q.length > 0) {
+        const haystack = [
+          doctor.firstName,
+          doctor.lastName,
+          doctor.specialty,
+          doctor.hospitalName,
+          (doctor as any).nhimaNumber,
+          (doctor as any).phoneNumber,
+          (doctor as any).email,
+          ((doctor as any).tags || []).join(" "),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (!haystack.includes(q)) return false;
+      }
+
+      return true;
     });
 
-    setFilteredDoctors(filtered);
+    setFilteredDoctors(results);
   };
 
-  const getAvailabilityColor = (availability: string) => {
-    switch (availability) {
-      case "available":
-        return "#4CAF50";
-      case "busy":
-        return "#FF9800";
-      case "offline":
-        return "#F44336";
-      default:
-        return textSecondaryColor;
-    }
+  // Map rating to a small color indicator used in the list
+  const getRatingColor = (rating: number | undefined) => {
+    if (!rating && rating !== 0) return textSecondaryColor;
+    if (rating >= 4) return "#4CAF50";
+    if (rating >= 3) return "#FF9800";
+    return "#F44336";
   };
 
-  const handleDoctorAction = (doctor: Doctor, action: "book" | "view") => {
+  const handleDoctorAction = (
+    doctor: SelectedDoctorType,
+    action: "book" | "view"
+  ) => {
+    // doctor is expected to conform to HealthPersonnelViewModel from the store
     setSelectedDoctor(doctor);
     setActionType(action);
     setIsBottomSheetVisible(true);
@@ -210,7 +174,7 @@ export default function Doctors() {
     filterDoctors(searchQuery, selectedSpecialty);
   };
 
-  const renderDoctor = ({ item: doctor }: { item: Doctor }) => (
+  const renderDoctor = ({ item: doctor }: { item: HealthPersonnel }) => (
     <TouchableOpacity
       onPress={() => router.push(`/doctors/${doctor.id}`)}
       activeOpacity={0.9}
@@ -220,7 +184,7 @@ export default function Doctors() {
           <View style={styles.doctorHeader}>
             <View style={styles.doctorImageContainer}>
               <Animated.Image
-                source={{ uri: doctor.image }}
+                source={{ uri: doctor.profilePicture }}
                 style={styles.doctorImage}
                 defaultSource={require("@/assets/images/icon.png")}
                 sharedTransitionTag={`doctor-image-${doctor.id}`}
@@ -229,7 +193,7 @@ export default function Doctors() {
                 style={[
                   styles.availabilityDot,
                   {
-                    backgroundColor: getAvailabilityColor(doctor.availability),
+                    backgroundColor: getRatingColor(doctor.rating as any),
                   },
                 ]}
               />
@@ -246,7 +210,7 @@ export default function Doctors() {
                   style={[styles.doctorName, { color: textColor }]}
                   numberOfLines={1}
                 >
-                  {doctor.name}
+                  {doctor.firstName + " " + doctor.lastName}
                 </Text>
                 {doctor.isVerified ? (
                   <View
@@ -297,7 +261,7 @@ export default function Doctors() {
               style={[styles.hospital, { color: textSecondaryColor }]}
               numberOfLines={1}
             >
-              {doctor.hospital}
+              {doctor.hospitalName}
             </Text>
           </View>
 
@@ -309,25 +273,14 @@ export default function Doctors() {
                 Consultation
               </Text>
               <Text style={[styles.fee, { color: textColor }]}>
-                K{doctor.consultationFee}
+                K{doctor.rate}
               </Text>
             </View>
             <ChironButton
-              title={
-                doctor.availability === "available"
-                  ? "Book Now"
-                  : "View Profile"
-              }
-              onPress={() =>
-                handleDoctorAction(
-                  doctor,
-                  doctor.availability === "available" ? "book" : "view"
-                )
-              }
+              title={"View Profile"}
+              onPress={() => handleDoctorAction(doctor, "view")}
               size="small"
-              variant={
-                doctor.availability === "available" ? "primary" : "outline"
-              }
+              variant={"primary"}
               style={styles.bookButton}
             />
           </View>
@@ -350,84 +303,125 @@ export default function Doctors() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchSection}>
-        <View
-          style={[
-            styles.searchContainer,
-            { backgroundColor: surfaceColor, borderColor },
-          ]}
-        >
-          <Ionicons
-            name="search-outline"
-            size={20}
-            color={textSecondaryColor}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={[styles.searchInput, { color: textColor }]}
-            placeholder="Search doctors, specialties, hospitals..."
-            placeholderTextColor={textSecondaryColor}
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => handleSearch("")}>
-              <Ionicons
-                name="close-circle"
-                size={20}
-                color={textSecondaryColor}
-              />
-            </TouchableOpacity>
-          )}
+      <View>
+        <View style={styles.searchSection}>
+          <View
+            style={[
+              styles.searchContainer,
+              { backgroundColor: surfaceColor, borderColor },
+            ]}
+          >
+            <Ionicons
+              name="search-outline"
+              size={20}
+              color={textSecondaryColor}
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={[styles.searchInput, { color: textColor }]}
+              placeholder="Search doctors, specialties, hospitals..."
+              placeholderTextColor={textSecondaryColor}
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => handleSearch("")}>
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={textSecondaryColor}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.specialtiesContainer}
+          contentContainerStyle={styles.specialtiesContent}
+        >
+          {specialties.map((specialty) => (
+            <ChironChip
+              key={specialty}
+              label={specialty}
+              onPress={() => handleSpecialtyFilter(specialty)}
+              isSelected={selectedSpecialty === specialty}
+              size="medium"
+              style={styles.specialtyChip}
+            />
+          ))}
+        </ScrollView>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.specialtiesContainer}
-        contentContainerStyle={styles.specialtiesContent}
-      >
-        {specialties.map((specialty) => (
-          <ChironChip
-            key={specialty}
-            label={specialty}
-            onPress={() => handleSpecialtyFilter(specialty)}
-            isSelected={selectedSpecialty === specialty}
-            size="medium"
-            style={styles.specialtyChip}
-          />
-        ))}
-      </ScrollView>
+      <View style={styles.listContainer}>
+        <View style={styles.resultsHeader}>
+          {loadingPersonnel ? (
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <ActivityIndicator size="small" color={primaryColor} />
+              <Text style={[styles.resultsCount, { color: textColor }]}>
+                Loading doctors...
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.resultsCount, { color: textColor }]}>
+              {filteredDoctors?.length ?? 0} doctors found
+            </Text>
+          )}
+          <TouchableOpacity style={styles.sortButton}>
+            <Text style={[styles.sortText, { color: primaryColor }]}>
+              Sort by rating
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={primaryColor} />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.resultsHeader}>
-        <Text style={[styles.resultsCount, { color: textColor }]}>
-          {filteredDoctors.length} doctors found
-        </Text>
-        <TouchableOpacity style={styles.sortButton}>
-          <Text style={[styles.sortText, { color: primaryColor }]}>
-            Sort by rating
-          </Text>
-          <Ionicons name="chevron-down" size={16} color={primaryColor} />
-        </TouchableOpacity>
+        <FlatList
+          data={filteredDoctors ?? []}
+          ListEmptyComponent={() => (
+            <View style={[styles.emptyContainer, { minHeight: 300 }]}>
+              {loadingPersonnel ? (
+                <ActivityIndicator size="large" color={primaryColor} />
+              ) : (
+                <View style={{ alignItems: "center" }}>
+                  <Text style={[styles.emptyTitle, { color: textColor }]}>
+                    No doctors found
+                  </Text>
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    Try adjusting filters or retry fetching the list.
+                  </Text>
+                  <ChironButton
+                    title="Retry"
+                    onPress={getHealthPersonnel}
+                    style={styles.retryButton}
+                  />
+                </View>
+              )}
+            </View>
+          )}
+          renderItem={renderDoctor}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.doctorsList}
+          removeClippedSubviews={false}
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
+          windowSize={10}
+          getItemLayout={(data, index) => ({
+            length: 180,
+            offset: 180 * index + 16 * index,
+            index,
+          })}
+        />
       </View>
-
-      <FlatList
-        data={filteredDoctors}
-        renderItem={renderDoctor}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.doctorsList}
-        removeClippedSubviews={false}
-        initialNumToRender={10}
-        maxToRenderPerBatch={5}
-        windowSize={10}
-        getItemLayout={(data, index) => ({
-          length: 180,
-          offset: 180 * index + 16 * index,
-          index,
-        })}
-      />
 
       <ChironBottomSheet ref={bottomSheetRef}>
         {isBottomSheetVisible && selectedDoctor && (
@@ -435,7 +429,7 @@ export default function Doctors() {
             <View style={styles.bottomSheetHeader}>
               <View style={styles.doctorDetailHeader}>
                 <Animated.Image
-                  source={{ uri: selectedDoctor.image }}
+                  source={{ uri: selectedDoctor.profilePicture }}
                   style={styles.bottomSheetDoctorImage}
                   defaultSource={require("@/assets/images/icon.png")}
                   sharedTransitionTag={`doctor-image-${selectedDoctor.id}`}
@@ -448,7 +442,7 @@ export default function Doctors() {
                         { color: textColor },
                       ]}
                     >
-                      {selectedDoctor.name}
+                      {selectedDoctor.firstName + " " + selectedDoctor.lastName}
                     </Text>
                     {selectedDoctor.isVerified && (
                       <MaterialIcons
@@ -501,7 +495,7 @@ export default function Doctors() {
                   <Text
                     style={[styles.hospitalText, { color: textSecondaryColor }]}
                   >
-                    {selectedDoctor.hospital}
+                    {selectedDoctor.hospitalName}
                   </Text>
                 </View>
               </View>
@@ -511,7 +505,7 @@ export default function Doctors() {
                   Specializations
                 </Text>
                 <View style={styles.tagsRow}>
-                  {selectedDoctor.tags.map((tag, index) => (
+                  {selectedDoctor?.tags?.map((tag, index) => (
                     <ChironChip
                       key={index}
                       label={tag}
@@ -524,25 +518,23 @@ export default function Doctors() {
 
               <View style={styles.detailSection}>
                 <Text style={[styles.sectionTitle, { color: textColor }]}>
-                  Availability
+                  Contact
                 </Text>
-                <View style={styles.availabilityRow}>
-                  <View
-                    style={[
-                      styles.availabilityIndicator,
-                      {
-                        backgroundColor: getAvailabilityColor(
-                          selectedDoctor.availability
-                        ),
-                      },
-                    ]}
-                  />
-                  <Text style={[styles.availabilityText, { color: textColor }]}>
-                    {selectedDoctor.availability === "available"
-                      ? "Available now"
-                      : selectedDoctor.availability === "busy"
-                      ? "Busy - Next available slot in 2 hours"
-                      : "Offline"}
+                <View style={{ marginBottom: 8 }}>
+                  <Text
+                    style={[styles.hospitalText, { color: textSecondaryColor }]}
+                  >
+                    NHIMA: {selectedDoctor?.nhimaNumber || "N/A"}
+                  </Text>
+                  <Text
+                    style={[styles.hospitalText, { color: textSecondaryColor }]}
+                  >
+                    Phone: {selectedDoctor?.phoneNumber || "N/A"}
+                  </Text>
+                  <Text
+                    style={[styles.hospitalText, { color: textSecondaryColor }]}
+                  >
+                    Email: {selectedDoctor?.email || "N/A"}
                   </Text>
                 </View>
               </View>
@@ -552,7 +544,7 @@ export default function Doctors() {
                   Consultation Fee
                 </Text>
                 <Text style={[styles.feeText, { color: textColor }]}>
-                  K{selectedDoctor.consultationFee}
+                  K{selectedDoctor.rate}
                 </Text>
               </View>
             </ScrollView>
@@ -561,7 +553,6 @@ export default function Doctors() {
               <ChironButton
                 title="Close"
                 onPress={() => {
-                  console.log("Close button pressed");
                   bottomSheetRef.current?.close();
                   setIsBottomSheetVisible(false);
                 }}
@@ -575,11 +566,9 @@ export default function Doctors() {
                     : "View Full Profile"
                 }
                 onPress={() => {
-                  console.log("Action button pressed:", actionType);
                   bottomSheetRef.current?.close();
                   setIsBottomSheetVisible(false);
 
-                  // Navigate to doctor details page for both actions
                   if (selectedDoctor) {
                     router.push(`/doctors/${selectedDoctor.id}`);
                   }
@@ -719,15 +708,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    paddingTop: 25,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 10 : 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 12 : 16,
+    paddingBottom: 12,
   },
   headerTitle: {
     fontSize: 24,
@@ -737,16 +725,16 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   searchSection: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    height: 48,
+    paddingHorizontal: 12,
+    height: 44,
   },
   searchIcon: {
     marginRight: 12,
@@ -757,12 +745,13 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   specialtiesContainer: {
-    marginBottom: 16,
-    height: 40,
+    marginBottom: 8,
+    height: undefined,
+    paddingVertical: 4,
   },
   specialtiesContent: {
-    paddingHorizontal: 20,
-    paddingRight: 40,
+    paddingHorizontal: 16,
+    paddingRight: 24,
     alignItems: "center",
   },
   specialtyChip: {
@@ -772,8 +761,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: 0,
+    marginBottom: 8,
   },
   resultsCount: {
     fontSize: 16,
@@ -789,19 +778,24 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   doctorsList: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingBottom: 80,
     flexGrow: 1,
+    paddingTop: 0,
+  },
+  listContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
   },
   doctorCard: {
     marginBottom: 16,
-    minHeight: 180,
+    minHeight: 150,
     borderColor: grayLightBorder,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
   },
   doctorContent: {
     flex: 1,
+    padding: 16,
   },
   doctorHeader: {
     flexDirection: "row",
@@ -809,21 +803,21 @@ const styles = StyleSheet.create({
   },
   doctorImageContainer: {
     position: "relative",
-    marginRight: 16,
+    marginRight: 12,
   },
   doctorImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: "#F0F0F0",
   },
   availabilityDot: {
     position: "absolute",
     bottom: 2,
     right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     borderWidth: 2,
     borderColor: "#FFFFFF",
   },
@@ -831,36 +825,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   doctorName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 2,
   },
   specialty: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "500",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   ratingContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
   },
   rating: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "500",
     marginLeft: 4,
   },
   experience: {
     fontSize: 12,
-    marginLeft: 4,
+    marginLeft: 6,
   },
   hospitalInfo: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   hospital: {
-    fontSize: 14,
+    fontSize: 13,
     marginLeft: 8,
   },
   locationInfo: {
@@ -893,7 +886,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 3,
+    paddingTop: 12,
   },
   feeContainer: {
     flex: 1,
@@ -903,32 +896,32 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   fee: {
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 15,
+    fontWeight: "700",
   },
   bookButton: {
-    minWidth: 100,
+    minWidth: 90,
   },
   // Bottom Sheet Styles
   bottomSheetContent: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   bottomSheetHeader: {
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
   doctorDetailHeader: {
     flexDirection: "row",
     alignItems: "center",
   },
   bottomSheetDoctorImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: "#F0F0F0",
-    marginRight: 16,
+    marginRight: 12,
   },
   bottomSheetDoctorInfo: {
     flex: 1,
@@ -936,25 +929,25 @@ const styles = StyleSheet.create({
   doctorNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
+    gap: 6,
+    marginBottom: 2,
   },
   bottomSheetDoctorName: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
   },
   bottomSheetSpecialty: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   bottomSheetRating: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
   bottomSheetRatingText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "500",
   },
   divider: {
@@ -964,12 +957,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   detailSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 12,
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 8,
   },
   hospitalRow: {
     flexDirection: "row",
@@ -983,15 +976,15 @@ const styles = StyleSheet.create({
   tagsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
   },
   tagChip: {
-    marginBottom: 4,
+    marginBottom: 2,
   },
   availabilityRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   availabilityIndicator: {
     width: 12,
@@ -1008,8 +1001,8 @@ const styles = StyleSheet.create({
   },
   bottomSheetActions: {
     flexDirection: "row",
-    gap: 12,
-    paddingTop: 20,
+    gap: 8,
+    paddingTop: 12,
   },
   closeButton: {
     flex: 1,
@@ -1020,25 +1013,25 @@ const styles = StyleSheet.create({
   // Filter Bottom Sheet Styles
   filterBottomSheetContent: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   filterHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
   filterTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
   },
   filterScroll: {
     flex: 1,
   },
   filterSection: {
-    marginBottom: 32,
+    marginBottom: 20,
   },
   filterSectionTitle: {
     fontSize: 16,
@@ -1049,8 +1042,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   slider: {
-    height: 40,
-    marginBottom: 8,
+    height: 36,
+    marginBottom: 6,
   },
   sliderLabel: {
     fontSize: 14,
@@ -1059,15 +1052,15 @@ const styles = StyleSheet.create({
   genderChips: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 8,
   },
   genderChip: {
-    minWidth: 70,
+    minWidth: 64,
   },
   filterActions: {
     flexDirection: "row",
-    gap: 12,
-    paddingTop: 20,
+    gap: 8,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#E5E5E5",
   },
@@ -1076,5 +1069,25 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     flex: 2,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 20,
+    paddingHorizontal: 12,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: "center",
+    paddingHorizontal: 24,
+  },
+  retryButton: {
+    minWidth: 140,
   },
 });

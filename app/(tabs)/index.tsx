@@ -1,39 +1,29 @@
+import { Colors, grayLightBorder } from "@/constants/Colors";
+import { HealthStore } from "@/store/HealthStore";
 import {
-  Dimensions,
+  EvilIcons,
+  Feather,
+  FontAwesome,
+  FontAwesome5,
+  MaterialCommunityIcons,
+  MaterialIcons,
+} from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  View,
   TouchableOpacity,
-  Image,
+  View,
 } from "react-native";
-import {
-  Feather,
-  EvilIcons,
-  FontAwesome,
-  MaterialCommunityIcons,
-  FontAwesome5,
-  MaterialIcons,
-} from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors, grayLightBorder, grayMediumBorder } from "@/constants/Colors";
-import { useState } from "react";
-import { router } from "expo-router";
 
 interface categoriesProps {
   name: string;
   icon: React.ReactNode;
-}
-
-interface HealthPersonnelProps {
-  id: number;
-  name: string;
-  specialty: string;
-  rating: number;
-  experience: string;
-  image: string;
-  isVerified: boolean;
 }
 
 interface PharmacyProps {
@@ -73,49 +63,6 @@ const initialCategories = [
     icon: (
       <FontAwesome5 name="hospital" size={20} color={Colors.light.primary} />
     ),
-  },
-];
-
-const topHealthPersonnel: HealthPersonnelProps[] = [
-  {
-    id: 1,
-    name: "Dr. Sarah Wilson",
-    specialty: "Cardiologist",
-    rating: 4.9,
-    experience: "12 years",
-    isVerified: true,
-    image:
-      "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&h=150&fit=crop&crop=face",
-  },
-  {
-    id: 2,
-    name: "Dr. Michael Chen",
-    specialty: "Pediatrician",
-    rating: 4.8,
-    experience: "8 years",
-    isVerified: true,
-    image:
-      "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face",
-  },
-  {
-    id: 3,
-    name: "Dr. Emily Rodriguez",
-    specialty: "Dermatologist",
-    rating: 4.9,
-    experience: "10 years",
-    isVerified: false,
-    image:
-      "https://images.unsplash.com/photo-1594824375467-b1ef7c8a78c7?w=150&h=150&fit=crop&crop=face",
-  },
-  {
-    id: 4,
-    name: "Dr. James Thompson",
-    specialty: "Orthopedic",
-    rating: 4.7,
-    experience: "15 years",
-    isVerified: true,
-    image:
-      "https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=150&h=150&fit=crop&crop=face",
   },
 ];
 
@@ -169,6 +116,15 @@ const topPharmacies: PharmacyProps[] = [
 export default function HomeScreen() {
   const [categories, setCategories] =
     useState<categoriesProps[]>(initialCategories);
+
+  const { personnel, loadingPersonnel, errorPersonnel, getHealthPersonnel } =
+    HealthStore();
+
+  // Fetch health personnel data when component mounts
+  useEffect(() => {
+    getHealthPersonnel();
+  }, []);
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <SafeAreaView>
@@ -190,19 +146,20 @@ export default function HomeScreen() {
         </View>
 
         {/* Search Input */}
-        <View style={styles.searchInputContainer}>
+        <TouchableOpacity
+          style={styles.searchInputContainer}
+          onPress={() => router.push("/(tabs)/search")}
+        >
           <Feather
             name="search"
             size={20}
             color="#888"
             style={{ marginRight: 12 }}
           />
-          <TextInput
-            placeholder="Search for doctors, pharmacy, medicines..."
-            style={styles.searchInput}
-            placeholderTextColor="#888"
-          />
-        </View>
+          <Text style={styles.searchPlaceholder}>
+            Search for doctors, pharmacy, medicines...
+          </Text>
+        </TouchableOpacity>
 
         {/* Categories */}
         <View style={styles.categoriesSection}>
@@ -213,7 +170,19 @@ export default function HomeScreen() {
             contentContainerStyle={styles.categoriesContainer}
           >
             {categories.map((category, idx) => (
-              <TouchableOpacity key={idx} style={styles.categoryCard}>
+              <TouchableOpacity
+                key={idx}
+                style={styles.categoryCard}
+                onPress={() => {
+                  // Navigate based on category name
+                  if (category.name === "Doctor") {
+                    router.push("/(tabs)/doctors");
+                  } else if (category.name === "Pharmacy") {
+                    router.push("/(tabs)/pharmacy");
+                  }
+                  // Add more navigation cases as needed
+                }}
+              >
                 <View style={styles.categoryIconContainer}>
                   {category.icon}
                 </View>
@@ -227,65 +196,87 @@ export default function HomeScreen() {
         <View style={styles.personnelSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Top Health Personnel</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/doctors")}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.personnelContainer}
-          >
-            {topHealthPersonnel.map((person) => (
-              <TouchableOpacity
-                onPress={() => router.push(`/(tabs)/doctors/${person.id}`)}
-                key={person.id}
-                style={styles.personnelCard}
-              >
-                <View style={styles.personnelImageContainer}>
-                  <Image
-                    source={{ uri: person.image }}
-                    style={styles.personnelImage}
-                    defaultSource={{
-                      uri: "https://via.placeholder.com/80x80/E8E8E8/666?text=Doctor",
-                    }}
-                  />
-                  <View style={{ height: 10 }} />
-                  {person.isVerified ? (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 2,
-                      }}
-                    >
-                      <MaterialIcons
-                        name="verified"
-                        size={15}
-                        color={Colors.light.primary}
-                      />
-                      <Text style={{ fontSize: 12 }}>Verified</Text>
-                    </View>
-                  ) : null}
 
-                  <View style={{ height: 10 }} />
-                  <View style={styles.ratingBadge}>
-                    <FontAwesome name="star" size={10} color="#FFD700" />
-                    <Text style={styles.ratingText}>{person.rating}</Text>
-                  </View>
-                </View>
-                <Text style={styles.personnelName} numberOfLines={1}>
-                  {person.name}
-                </Text>
-                <Text style={styles.personnelSpecialty} numberOfLines={1}>
-                  {person.specialty}
-                </Text>
-                <Text style={styles.personnelExperience}>
-                  Experience: {person.experience}
-                </Text>
+          {loadingPersonnel ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.light.primary} />
+              <Text style={styles.loadingText}>Loading doctors...</Text>
+            </View>
+          ) : errorPersonnel ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorPersonnel}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => getHealthPersonnel()}
+              >
+                <Text style={styles.retryText}>Try Again</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            </View>
+          ) : personnel && personnel.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.personnelContainer}
+            >
+              {personnel.slice(0, 10).map((person) => (
+                <TouchableOpacity
+                  onPress={() => router.push(`/(tabs)/doctors/${person.id}`)}
+                  key={person.id}
+                  style={styles.personnelCard}
+                >
+                  <View style={styles.personnelImageContainer}>
+                    <Image
+                      source={{ uri: person.profilePicture }}
+                      style={styles.personnelImage}
+                      defaultSource={{
+                        uri: "https://via.placeholder.com/80x80/E8E8E8/666?text=Doctor",
+                      }}
+                    />
+                    <View style={{ height: 10 }} />
+                    {person.isVerified ? (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 2,
+                        }}
+                      >
+                        <MaterialIcons
+                          name="verified"
+                          size={15}
+                          color={Colors.light.primary}
+                        />
+                        <Text style={{ fontSize: 12 }}>Verified</Text>
+                      </View>
+                    ) : null}
+
+                    <View style={{ height: 10 }} />
+                    <View style={styles.ratingBadge}>
+                      <FontAwesome name="star" size={10} color="#FFD700" />
+                      <Text style={styles.ratingText}>{person.rating}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.personnelName} numberOfLines={1}>
+                    {person.firstName} {person.lastName}
+                  </Text>
+                  <Text style={styles.personnelSpecialty} numberOfLines={1}>
+                    {person.specialty}
+                  </Text>
+                  <Text style={styles.personnelExperience}>
+                    Experience: {person.experience} years
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No doctors available</Text>
+            </View>
+          )}
         </View>
         {/* Top Pharmacies */}
         <View style={styles.personnelSection}>
@@ -414,6 +405,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 12,
     paddingHorizontal: 16,
+    paddingVertical: 12,
     marginHorizontal: 20,
     marginBottom: 24,
     shadowColor: "#000",
@@ -422,11 +414,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     borderColor: grayLightBorder,
     borderWidth: 1,
+    minHeight: 48,
   },
   searchInput: {
     flex: 1,
     height: 48,
     fontSize: 16,
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontSize: 16,
+    color: "#888",
   },
   categoriesSection: {
     marginBottom: 32,
@@ -642,5 +640,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.primary,
     fontWeight: "500",
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 12,
+  },
+  errorContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#FF5722",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: Colors.light.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
   },
 });
