@@ -1,13 +1,13 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ViewStyle } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import { ChironButton } from "@/components/ChironButton";
 import { ChironCard } from "@/components/ChironCard";
-import { UserRole } from "@/types";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { UserRole } from "@/types";
+import { router } from "expo-router";
+import React, { useState } from "react";
+import { StyleSheet, View, ViewStyle } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function RoleSelectionScreen() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -15,7 +15,7 @@ export default function RoleSelectionScreen() {
 
   const roles = [
     {
-      role: UserRole.PATIENT,
+      role: UserRole.USER,
       icon: "🏥",
       title: "I'm a Patient",
       description:
@@ -30,7 +30,7 @@ export default function RoleSelectionScreen() {
       color: "#4CAF50",
     },
     {
-      role: UserRole.PHARMACY,
+      role: UserRole.DRUG_STORE,
       icon: "💊",
       title: "I'm a Pharmacy",
       description:
@@ -43,7 +43,7 @@ export default function RoleSelectionScreen() {
     if (selectedRole) {
       router.push({
         pathname: "/(auth)/signup",
-        params: { role: selectedRole },
+        params: { preselectedRole: selectedRole },
       });
     }
   };

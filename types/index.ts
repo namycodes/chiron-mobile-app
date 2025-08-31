@@ -18,6 +18,51 @@ export enum UserRole {
   DRUG_STORE = 'DRUG_STORE'
 }
 
+// Role Interface for backend roles
+export interface Role {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RolesResponse {
+  data: {
+    roles: Role[]
+  },
+  message: string,
+  statusCode: number
+}
+
+// Register Interface to match backend Register struct
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  roleId: string;
+  nhimaNumber?: string; // For health personnel and drug store
+  experience?: number; // For health personnel
+  specialty?: string; // For health personnel
+  name?: string; // Business name for drug store
+  address?: string; // For drug store
+  dateOfBirth?: string; // For all users (ISO date string)
+  hospitalName?: string; // For health personnel
+  hospitalType?: string; // For health personnel
+  rate?: number; // For health personnel
+}
+
+export interface RegisterResponse {
+  data: {
+    token: string;
+    user: User;
+  },
+  message: string,
+  statusCode: number
+}
+
 // Patient Interface
 export interface Patient extends User {
   role: UserRole.USER;
