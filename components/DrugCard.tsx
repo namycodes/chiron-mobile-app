@@ -1,6 +1,7 @@
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { CartStore } from "@/store/CartStore";
+import { WishlistStore } from "@/store/WishlistStore";
 import { Drug } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -17,8 +18,11 @@ export const DrugCard: React.FC<DrugCardProps> = ({ drug, onPress }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { addToCart } = CartStore();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = WishlistStore();
 
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+
+  const isWishlisted = isInWishlist(drug.id);
 
   const formatPrice = (price: number) => {
     return `ZMW${(price || 0).toFixed(2)}`;
@@ -46,6 +50,14 @@ export const DrugCard: React.FC<DrugCardProps> = ({ drug, onPress }) => {
   ) => {
     addToCart(drug, 1, prescriptionCode, prescriptionDocument);
     setShowPrescriptionModal(false);
+  };
+
+  const handleToggleWishlist = () => {
+    if (isWishlisted) {
+      removeFromWishlist(drug.id);
+    } else {
+      addToWishlist(drug);
+    }
   };
 
   return (
@@ -131,6 +143,25 @@ export const DrugCard: React.FC<DrugCardProps> = ({ drug, onPress }) => {
             disabled={stockStatus.text === "Out of Stock"}
           >
             <Ionicons name="cart" size={16} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.wishlistButton,
+              {
+                backgroundColor: isWishlisted
+                  ? "#EF4444"
+                  : colors.tabIconDefault,
+              },
+            ]}
+            onPress={handleToggleWishlist}
+          >
+            <Ionicons
+              name={isWishlisted ? "heart" : "heart-outline"}
+              size={16}
+              color="white"
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -264,6 +295,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addToCartButton: {
+    marginBottom: 8,
+  },
+  wishlistButton: {
     marginBottom: 8,
   },
   viewButton: {

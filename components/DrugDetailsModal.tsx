@@ -1,6 +1,7 @@
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { CartStore } from "@/store/CartStore";
+import { WishlistStore } from "@/store/WishlistStore";
 import { Drug } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -38,11 +39,14 @@ export const DrugDetailsModal: React.FC<DrugDetailsModalProps> = ({
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { addToCart } = CartStore();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = WishlistStore();
   const router = useRouter();
 
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
 
   if (!drug) return null;
+
+  const isWishlisted = isInWishlist(drug.id);
 
   const formatPrice = (price: number) => {
     return `ZMW${price.toFixed(2)}`;
@@ -129,6 +133,22 @@ export const DrugDetailsModal: React.FC<DrugDetailsModalProps> = ({
             },
           },
         ]
+      );
+    }
+  };
+
+  const handleToggleWishlist = () => {
+    if (isWishlisted) {
+      removeFromWishlist(drug.id);
+      Alert.alert(
+        "Removed from Wishlist",
+        `${drug.name} has been removed from your wishlist.`
+      );
+    } else {
+      addToWishlist(drug);
+      Alert.alert(
+        "Added to Wishlist",
+        `${drug.name} has been added to your wishlist.`
       );
     }
   };
@@ -401,6 +421,27 @@ export const DrugDetailsModal: React.FC<DrugDetailsModalProps> = ({
             >
               <TouchableOpacity
                 style={[
+                  styles.wishlistButton,
+                  {
+                    backgroundColor: isWishlisted
+                      ? "#EF4444"
+                      : colors.tabIconDefault,
+                  },
+                ]}
+                onPress={handleToggleWishlist}
+              >
+                <Ionicons
+                  name={isWishlisted ? "heart" : "heart-outline"}
+                  size={20}
+                  color="white"
+                />
+                <Text style={styles.wishlistButtonText}>
+                  {isWishlisted ? "Remove" : "Wishlist"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
                   styles.addToCartButton,
                   { backgroundColor: colors.tint },
                 ]}
@@ -624,11 +665,28 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   actionButtons: {
+    flexDirection: "row",
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
+    gap: 12,
+  },
+  wishlistButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  wishlistButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
   },
   addToCartButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
