@@ -6,7 +6,14 @@ import { ThemedView } from "@/components/ThemedView";
 import { AuthStore } from "@/store/AuthStore";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignInScreen() {
@@ -33,57 +40,71 @@ export default function SignInScreen() {
   };
   return (
     <SafeAreaView style={styles.container}>
-      <ThemedView style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <WordLogo showText={false} size="large" style={styles.logo} />
-          <ThemedText type="title" style={styles.title}>
-            Welcome Back
-          </ThemedText>
-          <ThemedText type="secondary" style={styles.subtitle}>
-            Sign in to your Chiron account
-          </ThemedText>
-        </View>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <ThemedView style={styles.content}>
+            {/* Header */}
+            <View style={styles.header}>
+              <WordLogo showText={false} size="large" style={styles.logo} />
+              <ThemedText type="title" style={styles.title}>
+                Welcome Back
+              </ThemedText>
+              <ThemedText type="secondary" style={styles.subtitle}>
+                Sign in to your Chiron account
+              </ThemedText>
+            </View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          <ChironInput
-            label="Email"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            leftIcon="mail-outline"
-            required
-          />
+            {/* Form */}
+            <View style={styles.form}>
+              <ChironInput
+                label="Email"
+                placeholder="Enter your email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                leftIcon="mail-outline"
+                required
+              />
 
-          <ChironInput
-            label="Password"
-            placeholder="Enter your password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            leftIcon="lock-closed-outline"
-            showPasswordToggle
-            required
-          />
+              <ChironInput
+                label="Password"
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                leftIcon="lock-closed-outline"
+                showPasswordToggle
+                required
+              />
 
-          <ChironButton
-            title="Sign In"
-            onPress={handleSignIn}
-            loading={loading}
-            style={styles.signInButton}
-          />
-        </View>
+              <ChironButton
+                title="Sign In"
+                onPress={handleSignIn}
+                loading={loading}
+                style={styles.signInButton}
+              />
+            </View>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <ThemedText type="secondary">Don't have an account? </ThemedText>
-          <ThemedText type="link" onPress={() => router.push("/(auth)/signup")}>
-            Sign up here
-          </ThemedText>
-        </View>
-      </ThemedView>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <ThemedText type="secondary">Don't have an account? </ThemedText>
+              <ThemedText
+                type="link"
+                onPress={() => router.push("/(auth)/signup")}
+              >
+                Sign up here
+              </ThemedText>
+            </View>
+          </ThemedView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -92,10 +113,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
     flex: 1,
     padding: 24,
     justifyContent: "space-between",
+    minHeight: "100%",
   },
   header: {
     marginBottom: 40,
@@ -114,6 +142,7 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+    justifyContent: "center",
   },
   signInButton: {
     marginTop: 24,
@@ -123,5 +152,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
+    marginTop: 40,
   },
 });

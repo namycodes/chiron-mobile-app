@@ -445,7 +445,7 @@ export interface Drug {
   manufacturer: string;
   category: string;
   price: number;
-  stockQuantity: number;
+  quantityAvailable: number;
   imageUrl?: string;
   requiresPrescription: boolean;
   dosage: string;
@@ -476,6 +476,133 @@ export interface DrugResponse {
 export interface DrugDetailsResponse {
   data: {
     drug: Drug
+  },
+  message: string,
+  statusCode: number
+}
+
+// Cart Types
+export interface CartItem {
+  id: string;
+  drug: Drug;
+  quantity: number;
+  prescriptionCode?: string;
+  prescriptionDocument?: string; // URL to uploaded prescription
+  addedAt: Date;
+}
+
+export interface Cart {
+  items: CartItem[];
+  totalItems: number;
+  totalAmount: number;
+  updatedAt: Date;
+}
+
+// Prescription Types
+export interface PrescriptionUpload {
+  id: string;
+  drugId: string;
+  documentUrl: string;
+  fileName: string;
+  uploadedAt: Date;
+  status: PrescriptionStatus;
+  verificationNotes?: string;
+}
+
+export enum PrescriptionStatus {
+  PENDING = 'pending',
+  VERIFIED = 'verified',
+  REJECTED = 'rejected'
+}
+
+// Checkout Types
+export interface CheckoutData {
+  cartItems: CartItem[];
+  deliveryAddress: DeliveryAddress;
+  paymentMethod: PaymentMethod;
+  deliveryOption: DeliveryType;
+  prescriptions: PrescriptionUpload[];
+  totalAmount: number;
+  deliveryFee: number;
+  grandTotal: number;
+}
+
+export interface DeliveryAddress {
+  id?: string;
+  fullName: string;
+  phoneNumber: string;
+  address: string;
+  city: string;
+  province: string;
+  zipCode: string;
+  isDefault: boolean;
+}
+
+export interface PaymentMethod {
+  id?: string;
+  type: PaymentType;
+  details: any; // Could be card details, mobile money details, etc.
+}
+
+export enum PaymentType {
+  MOBILE_MONEY = 'mobile_money',
+  CARD = 'card',
+  CASH_ON_DELIVERY = 'cash_on_delivery',
+  BANK_TRANSFER = 'bank_transfer'
+}
+
+// Order Types (Enhanced)
+export interface DrugOrder {
+  id: string;
+  userId: string;
+  pharmacyId: string;
+  items: CartItem[];
+  deliveryAddress: DeliveryAddress;
+  paymentMethod: PaymentMethod;
+  status: DrugOrderStatus;
+  totalAmount: number;
+  deliveryFee: number;
+  grandTotal: number;
+  orderDate: Date;
+  estimatedDelivery?: Date;
+  trackingNumber?: string;
+  prescriptions: PrescriptionUpload[];
+}
+
+export enum DrugOrderStatus {
+  PENDING_PAYMENT = 'pending_payment',
+  PAID = 'paid',
+  PRESCRIPTION_VERIFICATION = 'prescription_verification',
+  CONFIRMED = 'confirmed',
+  PREPARING = 'preparing',
+  OUT_FOR_DELIVERY = 'out_for_delivery',
+  DELIVERED = 'delivered',
+  CANCELLED = 'cancelled',
+  REFUNDED = 'refunded'
+}
+
+// API Response Types
+export interface AddToCartResponse {
+  data: {
+    cartItem: CartItem;
+    cart: Cart;
+  },
+  message: string,
+  statusCode: number
+}
+
+export interface CartResponse {
+  data: {
+    cart: Cart
+  },
+  message: string,
+  statusCode: number
+}
+
+export interface CheckoutResponse {
+  data: {
+    order: DrugOrder;
+    paymentUrl?: string; // For online payments
   },
   message: string,
   statusCode: number

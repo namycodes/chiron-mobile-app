@@ -1,9 +1,12 @@
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { CartStore } from "@/store/CartStore";
 import { Drug } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
+  Alert,
   Dimensions,
   Image,
   Modal,
@@ -13,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { PrescriptionModal } from "./PrescriptionModal";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
 
@@ -33,11 +37,15 @@ export const DrugDetailsModal: React.FC<DrugDetailsModalProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const { addToCart } = CartStore();
+  const router = useRouter();
+
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
 
   if (!drug) return null;
 
   const formatPrice = (price: number) => {
-    return `$${price.toFixed(2)}`;
+    return `ZMW${price.toFixed(2)}`;
   };
 
   const getStockStatus = (quantity: number = 0) => {
@@ -46,7 +54,7 @@ export const DrugDetailsModal: React.FC<DrugDetailsModalProps> = ({
     return { text: "In Stock", color: "#10B981" };
   };
 
-  const stockStatus = getStockStatus(drug.stockQuantity);
+  const stockStatus = getStockStatus(drug.quantityAvailable);
 
   const InfoRow = ({
     icon,
@@ -103,245 +111,317 @@ export const DrugDetailsModal: React.FC<DrugDetailsModalProps> = ({
     </View>
   );
 
+  const handleAddToCart = () => {
+    if (drug.requiresPrescription) {
+      setShowPrescriptionModal(true);
+    } else {
+      addToCart(drug, 1);
+      Alert.alert(
+        "Added to Cart",
+        `${drug.name} has been added to your cart.`,
+        [
+          { text: "Continue Shopping", style: "cancel" },
+          {
+            text: "View Cart",
+            onPress: () => {
+              onClose();
+              router.push("/(tabs)/cart");
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handlePrescriptionSubmit = (
+    prescriptionCode?: string,
+    prescriptionDocument?: string
+  ) => {
+    addToCart(drug, 1, prescriptionCode, prescriptionDocument);
+    setShowPrescriptionModal(false);
+
+    Alert.alert(
+      "Added to Cart",
+      `${drug.name} has been added to your cart with prescription details.`,
+      [
+        { text: "Continue Shopping", style: "cancel" },
+        {
+          text: "View Cart",
+          onPress: () => {
+            onClose();
+            router.push("/(tabs)/cart");
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <ThemedView
-        style={[styles.container, { backgroundColor: colors.background }]}
+    <>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={onClose}
       >
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.background }]}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <ThemedText type="subtitle" style={styles.headerTitle}>
-            Drug Details
-          </ThemedText>
-          <View style={styles.headerRight} />
-        </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} style={styles.content}>
-          {/* Drug Image and Basic Info */}
-          <View
-            style={[styles.heroSection, { backgroundColor: colors.background }]}
-          >
-            <Image
-              source={{
-                uri: drug.imageUrl || "https://via.placeholder.com/150x150",
-              }}
-              style={styles.drugImage}
-            />
-
-            <View style={styles.basicInfo}>
-              <View style={styles.nameContainer}>
-                <ThemedText type="title" style={styles.drugName}>
-                  {drug.name}
-                </ThemedText>
-                {drug.requiresPrescription && (
-                  <View style={styles.prescriptionBadge}>
-                    <Ionicons name="medical" size={16} color="white" />
-                    <Text style={styles.prescriptionText}>
-                      Prescription Required
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <Text
-                style={[styles.manufacturer, { color: colors.tabIconDefault }]}
-              >
-                by {drug.manufacturer || "Unknown manufacturer"}
-              </Text>
-
-              <Text style={[styles.description, { color: colors.text }]}>
-                {drug.description ||
-                  "No description available for this medication."}
-              </Text>
-            </View>
+        <ThemedView
+          style={[styles.container, { backgroundColor: colors.background }]}
+        >
+          {/* Header */}
+          <View style={[styles.header, { backgroundColor: colors.background }]}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <ThemedText type="subtitle" style={styles.headerTitle}>
+              Drug Details
+            </ThemedText>
+            <View style={styles.headerRight} />
           </View>
 
-          {/* Price and Stock */}
-          <View
-            style={[styles.section, { backgroundColor: colors.background }]}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={styles.content}
           >
-            <View style={styles.priceStockRow}>
-              <View style={styles.priceContainer}>
-                <ThemedText type="title" style={styles.price}>
-                  {formatPrice(drug.price || 0)}
-                </ThemedText>
-                <Text
-                  style={[styles.priceLabel, { color: colors.tabIconDefault }]}
-                >
-                  per unit
-                </Text>
-              </View>
+            {/* Drug Image and Basic Info */}
+            <View
+              style={[
+                styles.heroSection,
+                { backgroundColor: colors.background },
+              ]}
+            >
+              <Image
+                source={{
+                  uri: drug.imageUrl || "https://via.placeholder.com/150x150",
+                }}
+                style={styles.drugImage}
+              />
 
-              <View style={styles.stockContainer}>
-                <View
-                  style={[
-                    styles.stockDot,
-                    { backgroundColor: stockStatus.color },
-                  ]}
-                />
-                <Text style={[styles.stockText, { color: stockStatus.color }]}>
-                  {stockStatus.text}
-                </Text>
+              <View style={styles.basicInfo}>
+                <View style={styles.nameContainer}>
+                  <ThemedText type="title" style={styles.drugName}>
+                    {drug.name}
+                  </ThemedText>
+                  {drug.requiresPrescription && (
+                    <View style={styles.prescriptionBadge}>
+                      <Ionicons name="medical" size={16} color="white" />
+                      <Text style={styles.prescriptionText}>
+                        Prescription Required
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
                 <Text
                   style={[
-                    styles.stockQuantity,
+                    styles.manufacturer,
                     { color: colors.tabIconDefault },
                   ]}
                 >
-                  {drug.stockQuantity || 0} available
+                  by {drug.manufacturer || "Unknown manufacturer"}
+                </Text>
+
+                <Text style={[styles.description, { color: colors.text }]}>
+                  {drug.description ||
+                    "No description available for this medication."}
                 </Text>
               </View>
             </View>
-          </View>
 
-          {/* Drug Information */}
-          <View
-            style={[styles.section, { backgroundColor: colors.background }]}
-          >
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Drug Information
-            </ThemedText>
-
-            <InfoRow
-              icon="medical-outline"
-              label="Dosage"
-              value={drug.dosage || "Not specified"}
-            />
-
-            <InfoRow
-              icon="library-outline"
-              label="Category"
-              value={drug.category || "Uncategorized"}
-            />
-
-            <InfoRow
-              icon="calendar-outline"
-              label="Expiry Date"
-              value={
-                drug.expiryDate
-                  ? new Date(drug.expiryDate).toLocaleDateString()
-                  : "Not specified"
-              }
-            />
-
-            <InfoRow
-              icon="barcode-outline"
-              label="Batch Number"
-              value={drug.batchNumber || "Not available"}
-            />
-          </View>
-
-          {/* Active Ingredients */}
-          {drug.activeIngredients && drug.activeIngredients.length > 0 ? (
-            <ListSection
-              title="Active Ingredients"
-              items={drug.activeIngredients}
-              icon="flask-outline"
-            />
-          ) : (
+            {/* Price and Stock */}
             <View
               style={[styles.section, { backgroundColor: colors.background }]}
             >
-              <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Active Ingredients
-              </ThemedText>
-              <Text
-                style={[styles.noDataText, { color: colors.tabIconDefault }]}
-              >
-                No active ingredients information available
-              </Text>
-            </View>
-          )}
+              <View style={styles.priceStockRow}>
+                <View style={styles.priceContainer}>
+                  <ThemedText type="title" style={styles.price}>
+                    {formatPrice(drug.price || 0)}
+                  </ThemedText>
+                  <Text
+                    style={[
+                      styles.priceLabel,
+                      { color: colors.tabIconDefault },
+                    ]}
+                  >
+                    per unit
+                  </Text>
+                </View>
 
-          {/* Side Effects */}
-          {drug.sideEffects && drug.sideEffects.length > 0 ? (
-            <ListSection
-              title="Possible Side Effects"
-              items={drug.sideEffects}
-              icon="warning-outline"
-            />
-          ) : (
-            <View
-              style={[styles.section, { backgroundColor: colors.background }]}
-            >
-              <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Possible Side Effects
-              </ThemedText>
-              <Text
-                style={[styles.noDataText, { color: colors.tabIconDefault }]}
-              >
-                No side effects information available
-              </Text>
-            </View>
-          )}
-
-          {/* Contraindications */}
-          {drug.contraindications && drug.contraindications.length > 0 ? (
-            <ListSection
-              title="Contraindications"
-              items={drug.contraindications}
-              icon="close-circle-outline"
-            />
-          ) : (
-            <View
-              style={[styles.section, { backgroundColor: colors.background }]}
-            >
-              <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Contraindications
-              </ThemedText>
-              <Text
-                style={[styles.noDataText, { color: colors.tabIconDefault }]}
-              >
-                No contraindications information available
-              </Text>
-            </View>
-          )}
-
-          {/* Safety Warning */}
-          {drug.requiresPrescription && (
-            <View
-              style={[styles.warningSection, { backgroundColor: "#FEF2F2" }]}
-            >
-              <Ionicons name="warning" size={24} color="#EF4444" />
-              <View style={styles.warningContent}>
-                <Text style={styles.warningTitle}>Prescription Required</Text>
-                <Text style={styles.warningText}>
-                  This medication requires a valid prescription from a licensed
-                  healthcare provider. Please consult with your doctor before
-                  use.
-                </Text>
+                <View style={styles.stockContainer}>
+                  <View
+                    style={[
+                      styles.stockDot,
+                      { backgroundColor: stockStatus.color },
+                    ]}
+                  />
+                  <Text
+                    style={[styles.stockText, { color: stockStatus.color }]}
+                  >
+                    {stockStatus.text}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.stockQuantity,
+                      { color: colors.tabIconDefault },
+                    ]}
+                  >
+                    {drug.quantityAvailable || 0} available
+                  </Text>
+                </View>
               </View>
             </View>
-          )}
-        </ScrollView>
 
-        {/* Action Buttons */}
-        {drug.isAvailable !== false && (drug.stockQuantity || 0) > 0 && (
-          <View
-            style={[
-              styles.actionButtons,
-              { backgroundColor: colors.background },
-            ]}
-          >
-            <TouchableOpacity
-              style={[styles.addToCartButton, { backgroundColor: colors.tint }]}
-              onPress={onAddToCart}
+            {/* Drug Information */}
+            <View
+              style={[styles.section, { backgroundColor: colors.background }]}
             >
-              <Ionicons name="bag-add" size={20} color="white" />
-              <Text style={styles.addToCartText}>Add to Cart</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ThemedView>
-    </Modal>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Drug Information
+              </ThemedText>
+
+              <InfoRow
+                icon="medical-outline"
+                label="Dosage"
+                value={drug.dosage || "Not specified"}
+              />
+
+              <InfoRow
+                icon="library-outline"
+                label="Category"
+                value={drug.category || "Uncategorized"}
+              />
+
+              <InfoRow
+                icon="calendar-outline"
+                label="Expiry Date"
+                value={
+                  drug.expiryDate
+                    ? new Date(drug.expiryDate).toLocaleDateString()
+                    : "Not specified"
+                }
+              />
+
+              <InfoRow
+                icon="barcode-outline"
+                label="Batch Number"
+                value={drug.batchNumber || "Not available"}
+              />
+            </View>
+
+            {/* Active Ingredients */}
+            {drug.activeIngredients && drug.activeIngredients.length > 0 ? (
+              <ListSection
+                title="Active Ingredients"
+                items={drug.activeIngredients}
+                icon="flask-outline"
+              />
+            ) : (
+              <View
+                style={[styles.section, { backgroundColor: colors.background }]}
+              >
+                <ThemedText type="subtitle" style={styles.sectionTitle}>
+                  Active Ingredients
+                </ThemedText>
+                <Text
+                  style={[styles.noDataText, { color: colors.tabIconDefault }]}
+                >
+                  No active ingredients information available
+                </Text>
+              </View>
+            )}
+
+            {/* Side Effects */}
+            {drug.sideEffects && drug.sideEffects.length > 0 ? (
+              <ListSection
+                title="Possible Side Effects"
+                items={drug.sideEffects}
+                icon="warning-outline"
+              />
+            ) : (
+              <View
+                style={[styles.section, { backgroundColor: colors.background }]}
+              >
+                <ThemedText type="subtitle" style={styles.sectionTitle}>
+                  Possible Side Effects
+                </ThemedText>
+                <Text
+                  style={[styles.noDataText, { color: colors.tabIconDefault }]}
+                >
+                  No side effects information available
+                </Text>
+              </View>
+            )}
+
+            {/* Contraindications */}
+            {drug.contraindications && drug.contraindications.length > 0 ? (
+              <ListSection
+                title="Contraindications"
+                items={drug.contraindications}
+                icon="close-circle-outline"
+              />
+            ) : (
+              <View
+                style={[styles.section, { backgroundColor: colors.background }]}
+              >
+                <ThemedText type="subtitle" style={styles.sectionTitle}>
+                  Contraindications
+                </ThemedText>
+                <Text
+                  style={[styles.noDataText, { color: colors.tabIconDefault }]}
+                >
+                  No contraindications information available
+                </Text>
+              </View>
+            )}
+
+            {/* Safety Warning */}
+            {drug.requiresPrescription && (
+              <View
+                style={[styles.warningSection, { backgroundColor: "#FEF2F2" }]}
+              >
+                <Ionicons name="warning" size={24} color="#EF4444" />
+                <View style={styles.warningContent}>
+                  <Text style={styles.warningTitle}>Prescription Required</Text>
+                  <Text style={styles.warningText}>
+                    This medication requires a valid prescription from a
+                    licensed healthcare provider. Please consult with your
+                    doctor before use.
+                  </Text>
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Action Buttons */}
+          {drug.isAvailable !== false && (drug.quantityAvailable || 0) > 0 && (
+            <View
+              style={[
+                styles.actionButtons,
+                { backgroundColor: colors.background },
+              ]}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.addToCartButton,
+                  { backgroundColor: colors.tint },
+                ]}
+                onPress={handleAddToCart}
+              >
+                <Ionicons name="bag-add" size={20} color="white" />
+                <Text style={styles.addToCartText}>Add to Cart</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ThemedView>
+      </Modal>
+
+      {/* Prescription Modal */}
+      <PrescriptionModal
+        drug={drug}
+        visible={showPrescriptionModal}
+        onClose={() => setShowPrescriptionModal(false)}
+        onSubmit={handlePrescriptionSubmit}
+      />
+    </>
   );
 };
 

@@ -655,6 +655,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingBottom: 20,
+    paddingHorizontal: 5,
   },
   drugsHeader: {
     flexDirection: "row",

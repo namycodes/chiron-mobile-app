@@ -1,9 +1,11 @@
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { CartStore } from "@/store/CartStore";
 import { Drug } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { PrescriptionModal } from "./PrescriptionModal";
 import { ThemedText } from "./ThemedText";
 
 interface DrugCardProps {
@@ -14,9 +16,12 @@ interface DrugCardProps {
 export const DrugCard: React.FC<DrugCardProps> = ({ drug, onPress }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const { addToCart } = CartStore();
+
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
 
   const formatPrice = (price: number) => {
-    return `$${(price || 0).toFixed(2)}`;
+    return `ZMW${(price || 0).toFixed(2)}`;
   };
 
   const getStockStatus = (quantity: number = 0) => {
@@ -25,7 +30,23 @@ export const DrugCard: React.FC<DrugCardProps> = ({ drug, onPress }) => {
     return { text: "In Stock", color: "#10B981" };
   };
 
-  const stockStatus = getStockStatus(drug.stockQuantity);
+  const stockStatus = getStockStatus(drug.quantityAvailable);
+
+  const handleAddToCart = () => {
+    if (drug.requiresPrescription) {
+      setShowPrescriptionModal(true);
+    } else {
+      addToCart(drug);
+    }
+  };
+
+  const handlePrescriptionSubmit = (
+    prescriptionCode?: string,
+    prescriptionDocument?: string
+  ) => {
+    addToCart(drug, 1, prescriptionCode, prescriptionDocument);
+    setShowPrescriptionModal(false);
+  };
 
   return (
     <TouchableOpacity
@@ -95,13 +116,42 @@ export const DrugCard: React.FC<DrugCardProps> = ({ drug, onPress }) => {
 
         <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.tint }]}
+            style={[
+              styles.actionButton,
+              styles.addToCartButton,
+              {
+                backgroundColor:
+                  stockStatus.text === "Out of Stock"
+                    ? colors.tabIconDefault
+                    : colors.tint,
+                opacity: stockStatus.text === "Out of Stock" ? 0.5 : 1,
+              },
+            ]}
+            onPress={handleAddToCart}
+            disabled={stockStatus.text === "Out of Stock"}
+          >
+            <Ionicons name="cart" size={16} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.viewButton,
+              { backgroundColor: colors.tabIconDefault },
+            ]}
             onPress={onPress}
           >
             <Ionicons name="eye" size={16} color="white" />
           </TouchableOpacity>
         </View>
       </View>
+
+      <PrescriptionModal
+        drug={drug}
+        visible={showPrescriptionModal}
+        onClose={() => setShowPrescriptionModal(false)}
+        onSubmit={handlePrescriptionSubmit}
+      />
     </TouchableOpacity>
   );
 };
@@ -212,5 +262,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
+  },
+  addToCartButton: {
+    marginBottom: 8,
+  },
+  viewButton: {
+    // No additional styles needed
   },
 });

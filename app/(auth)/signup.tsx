@@ -9,7 +9,14 @@ import { useAuthStore } from "@/hooks/useAuthStore";
 import { UserRole } from "@/types";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignUpScreen() {
@@ -226,266 +233,281 @@ export default function SignUpScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <ThemedView style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <WordLogo size="large" style={styles.logo} />
-            <View style={styles.roleHeader}>
-              <ThemedText type="title" style={styles.title}>
-                {getRoleTitle()}
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+        >
+          <ThemedView style={styles.content}>
+            {/* Header */}
+            <View style={styles.header}>
+              <WordLogo size="large" style={styles.logo} />
+              <View style={styles.roleHeader}>
+                <ThemedText type="title" style={styles.title}>
+                  {getRoleTitle()}
+                </ThemedText>
+              </View>
+              <ThemedText type="secondary" style={styles.subtitle}>
+                Create your Chiron account to get started
               </ThemedText>
             </View>
-            <ThemedText type="secondary" style={styles.subtitle}>
-              Create your Chiron account to get started
-            </ThemedText>
-          </View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            {selectedRoleType === UserRole.HEALTH_PERSONNEL ||
-            selectedRoleType === UserRole.USER ? (
-              <View style={styles.nameRow}>
-                <View style={styles.nameField}>
+            {/* Form */}
+            <View style={styles.form}>
+              {selectedRoleType === UserRole.HEALTH_PERSONNEL ||
+              selectedRoleType === UserRole.USER ? (
+                <View style={styles.nameRow}>
+                  <View style={styles.nameField}>
+                    <ChironInput
+                      label="First Name"
+                      placeholder="Enter first name"
+                      value={formData.firstName}
+                      onChangeText={(value) =>
+                        handleInputChange("firstName", value)
+                      }
+                      leftIcon="person-outline"
+                      required
+                    />
+                  </View>
+                  <View style={styles.nameField}>
+                    <ChironInput
+                      label="Last Name"
+                      placeholder="Enter last name"
+                      value={formData.lastName}
+                      onChangeText={(value) =>
+                        handleInputChange("lastName", value)
+                      }
+                      leftIcon="person-outline"
+                      required
+                    />
+                  </View>
+                </View>
+              ) : null}
+              <ChironInput
+                label="Email"
+                placeholder="Enter your email"
+                value={formData.email}
+                onChangeText={(value) => handleInputChange("email", value)}
+                keyboardType="email-address"
+                leftIcon="mail-outline"
+                required
+              />
+
+              <ChironInput
+                label="Phone Number"
+                placeholder="Enter your phone number"
+                value={formData.phoneNumber}
+                onChangeText={(value) =>
+                  handleInputChange("phoneNumber", value)
+                }
+                keyboardType="phone-pad"
+                leftIcon="call-outline"
+                required
+              />
+
+              {/* Role Selection */}
+              <ChironPicker
+                label="Account Type"
+                value={formData.roleId}
+                onValueChange={(value) => handleInputChange("roleId", value)}
+                options={roles.map((role) => ({
+                  label:
+                    role.name === UserRole.USER
+                      ? "Patient"
+                      : role.name === UserRole.HEALTH_PERSONNEL
+                      ? "Healthcare Professional"
+                      : role.name === UserRole.DRUG_STORE
+                      ? "Pharmacy"
+                      : role.name,
+                  value: role.id,
+                }))}
+                placeholder="Select account type"
+                required
+              />
+
+              {/* Date of Birth - Common for all roles */}
+              <ChironDatePicker
+                label="Date of Birth"
+                value={formData.dateOfBirth}
+                onDateChange={(date) => handleInputChange("dateOfBirth", date)}
+                placeholder="Select your date of birth"
+                maximumDate={new Date()}
+                minimumDate={new Date(1900, 0, 1)}
+              />
+
+              {/* Role-specific fields */}
+              {selectedRoleType === UserRole.HEALTH_PERSONNEL && (
+                <>
                   <ChironInput
-                    label="First Name"
-                    placeholder="Enter first name"
-                    value={formData.firstName}
+                    label="NHIMA Number"
+                    placeholder="Enter your NHIMA number"
+                    value={formData.nhimaNumber}
                     onChangeText={(value) =>
-                      handleInputChange("firstName", value)
+                      handleInputChange("nhimaNumber", value)
                     }
-                    leftIcon="person-outline"
+                    leftIcon="card-outline"
                     required
                   />
-                </View>
-                <View style={styles.nameField}>
-                  <ChironInput
-                    label="Last Name"
-                    placeholder="Enter last name"
-                    value={formData.lastName}
-                    onChangeText={(value) =>
-                      handleInputChange("lastName", value)
+
+                  <ChironPicker
+                    label="Specialty"
+                    value={formData.specialty}
+                    onValueChange={(value) =>
+                      handleInputChange("specialty", value)
                     }
-                    leftIcon="person-outline"
+                    options={specialtyOptions}
+                    placeholder="Select your specialty"
                     required
                   />
-                </View>
-              </View>
-            ) : null}
-            <ChironInput
-              label="Email"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChangeText={(value) => handleInputChange("email", value)}
-              keyboardType="email-address"
-              leftIcon="mail-outline"
-              required
-            />
 
-            <ChironInput
-              label="Phone Number"
-              placeholder="Enter your phone number"
-              value={formData.phoneNumber}
-              onChangeText={(value) => handleInputChange("phoneNumber", value)}
-              keyboardType="phone-pad"
-              leftIcon="call-outline"
-              required
-            />
+                  <ChironInput
+                    label="Years of Experience"
+                    placeholder="Enter years of experience"
+                    value={formData.experience}
+                    onChangeText={(value) =>
+                      handleInputChange("experience", value)
+                    }
+                    keyboardType="numeric"
+                    leftIcon="time-outline"
+                    required
+                  />
 
-            {/* Role Selection */}
-            <ChironPicker
-              label="Account Type"
-              value={formData.roleId}
-              onValueChange={(value) => handleInputChange("roleId", value)}
-              options={roles.map((role) => ({
-                label:
-                  role.name === UserRole.USER
-                    ? "Patient"
-                    : role.name === UserRole.HEALTH_PERSONNEL
-                    ? "Healthcare Professional"
-                    : role.name === UserRole.DRUG_STORE
-                    ? "Pharmacy"
-                    : role.name,
-                value: role.id,
-              }))}
-              placeholder="Select account type"
-              required
-            />
+                  <ChironInput
+                    label="Hospital Name"
+                    placeholder="Enter hospital/clinic name"
+                    value={formData.hospitalName}
+                    onChangeText={(value) =>
+                      handleInputChange("hospitalName", value)
+                    }
+                    leftIcon="business-outline"
+                    required
+                  />
 
-            {/* Date of Birth - Common for all roles */}
-            <ChironDatePicker
-              label="Date of Birth"
-              value={formData.dateOfBirth}
-              onDateChange={(date) => handleInputChange("dateOfBirth", date)}
-              placeholder="Select your date of birth"
-              maximumDate={new Date()}
-              minimumDate={new Date(1900, 0, 1)}
-            />
+                  <ChironPicker
+                    label="Hospital Type"
+                    value={formData.hospitalType}
+                    onValueChange={(value) =>
+                      handleInputChange("hospitalType", value)
+                    }
+                    options={hospitalTypeOptions}
+                    placeholder="Select hospital type"
+                    required
+                  />
 
-            {/* Role-specific fields */}
-            {selectedRoleType === UserRole.HEALTH_PERSONNEL && (
-              <>
-                <ChironInput
-                  label="NHIMA Number"
-                  placeholder="Enter your NHIMA number"
-                  value={formData.nhimaNumber}
-                  onChangeText={(value) =>
-                    handleInputChange("nhimaNumber", value)
-                  }
-                  leftIcon="card-outline"
-                  required
-                />
+                  <ChironInput
+                    label="Consultation Rate (Optional)"
+                    placeholder="Enter consultation rate"
+                    value={formData.rate}
+                    onChangeText={(value) => handleInputChange("rate", value)}
+                    keyboardType="numeric"
+                    leftIcon="cash-outline"
+                  />
+                </>
+              )}
 
-                <ChironPicker
-                  label="Specialty"
-                  value={formData.specialty}
-                  onValueChange={(value) =>
-                    handleInputChange("specialty", value)
-                  }
-                  options={specialtyOptions}
-                  placeholder="Select your specialty"
-                  required
-                />
+              {selectedRoleType === UserRole.DRUG_STORE && (
+                <>
+                  <ChironInput
+                    label="NHIMA Number"
+                    placeholder="Enter your NHIMA number"
+                    value={formData.nhimaNumber}
+                    onChangeText={(value) =>
+                      handleInputChange("nhimaNumber", value)
+                    }
+                    leftIcon="card-outline"
+                    required
+                  />
 
-                <ChironInput
-                  label="Years of Experience"
-                  placeholder="Enter years of experience"
-                  value={formData.experience}
-                  onChangeText={(value) =>
-                    handleInputChange("experience", value)
-                  }
-                  keyboardType="numeric"
-                  leftIcon="time-outline"
-                  required
-                />
+                  <ChironInput
+                    label="Pharmacy Name"
+                    placeholder="Enter pharmacy name"
+                    value={formData.name}
+                    onChangeText={(value) => handleInputChange("name", value)}
+                    leftIcon="storefront-outline"
+                    required
+                  />
 
-                <ChironInput
-                  label="Hospital Name"
-                  placeholder="Enter hospital/clinic name"
-                  value={formData.hospitalName}
-                  onChangeText={(value) =>
-                    handleInputChange("hospitalName", value)
-                  }
-                  leftIcon="business-outline"
-                  required
-                />
+                  <ChironInput
+                    label="Address"
+                    placeholder="Enter pharmacy address"
+                    value={formData.address}
+                    onChangeText={(value) =>
+                      handleInputChange("address", value)
+                    }
+                    leftIcon="location-outline"
+                    multiline
+                    numberOfLines={3}
+                    required
+                  />
+                </>
+              )}
 
-                <ChironPicker
-                  label="Hospital Type"
-                  value={formData.hospitalType}
-                  onValueChange={(value) =>
-                    handleInputChange("hospitalType", value)
-                  }
-                  options={hospitalTypeOptions}
-                  placeholder="Select hospital type"
-                  required
-                />
+              {selectedRoleType === UserRole.USER && (
+                <>
+                  <ChironInput
+                    label="NHIMA Number (Optional)"
+                    placeholder="Enter your NHIMA number"
+                    value={formData.nhimaNumber}
+                    onChangeText={(value) =>
+                      handleInputChange("nhimaNumber", value)
+                    }
+                    leftIcon="card-outline"
+                  />
+                </>
+              )}
 
-                <ChironInput
-                  label="Consultation Rate (Optional)"
-                  placeholder="Enter consultation rate"
-                  value={formData.rate}
-                  onChangeText={(value) => handleInputChange("rate", value)}
-                  keyboardType="numeric"
-                  leftIcon="cash-outline"
-                />
-              </>
-            )}
+              <ChironInput
+                label="Password"
+                placeholder="Enter your password"
+                value={formData.password}
+                onChangeText={(value) => handleInputChange("password", value)}
+                secureTextEntry
+                leftIcon="lock-closed-outline"
+                showPasswordToggle
+                required
+              />
 
-            {selectedRoleType === UserRole.DRUG_STORE && (
-              <>
-                <ChironInput
-                  label="NHIMA Number"
-                  placeholder="Enter your NHIMA number"
-                  value={formData.nhimaNumber}
-                  onChangeText={(value) =>
-                    handleInputChange("nhimaNumber", value)
-                  }
-                  leftIcon="card-outline"
-                  required
-                />
+              <ChironInput
+                label="Confirm Password"
+                placeholder="Confirm your password"
+                value={formData.confirmPassword}
+                onChangeText={(value) =>
+                  handleInputChange("confirmPassword", value)
+                }
+                secureTextEntry
+                leftIcon="lock-closed-outline"
+                showPasswordToggle
+                required
+              />
 
-                <ChironInput
-                  label="Pharmacy Name"
-                  placeholder="Enter pharmacy name"
-                  value={formData.name}
-                  onChangeText={(value) => handleInputChange("name", value)}
-                  leftIcon="storefront-outline"
-                  required
-                />
+              <ChironButton
+                title="Create Account"
+                onPress={handleSignUp}
+                loading={loading}
+                size="large"
+                style={styles.signUpButton}
+              />
+            </View>
 
-                <ChironInput
-                  label="Address"
-                  placeholder="Enter pharmacy address"
-                  value={formData.address}
-                  onChangeText={(value) => handleInputChange("address", value)}
-                  leftIcon="location-outline"
-                  multiline
-                  numberOfLines={3}
-                  required
-                />
-              </>
-            )}
-
-            {selectedRoleType === UserRole.USER && (
-              <>
-                <ChironInput
-                  label="NHIMA Number (Optional)"
-                  placeholder="Enter your NHIMA number"
-                  value={formData.nhimaNumber}
-                  onChangeText={(value) =>
-                    handleInputChange("nhimaNumber", value)
-                  }
-                  leftIcon="card-outline"
-                />
-              </>
-            )}
-
-            <ChironInput
-              label="Password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChangeText={(value) => handleInputChange("password", value)}
-              secureTextEntry
-              leftIcon="lock-closed-outline"
-              showPasswordToggle
-              required
-            />
-
-            <ChironInput
-              label="Confirm Password"
-              placeholder="Confirm your password"
-              value={formData.confirmPassword}
-              onChangeText={(value) =>
-                handleInputChange("confirmPassword", value)
-              }
-              secureTextEntry
-              leftIcon="lock-closed-outline"
-              showPasswordToggle
-              required
-            />
-
-            <ChironButton
-              title="Create Account"
-              onPress={handleSignUp}
-              loading={loading}
-              size="large"
-              style={styles.signUpButton}
-            />
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <ThemedText type="secondary">Already have an account? </ThemedText>
-            <ThemedText
-              type="link"
-              onPress={() => router.push("/(auth)/signin")}
-            >
-              Sign in here
-            </ThemedText>
-          </View>
-        </ThemedView>
-      </ScrollView>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <ThemedText type="secondary">
+                Already have an account?{" "}
+              </ThemedText>
+              <ThemedText
+                type="link"
+                onPress={() => router.push("/(auth)/signin")}
+              >
+                Sign in here
+              </ThemedText>
+            </View>
+          </ThemedView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -493,6 +515,12 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     padding: 24,

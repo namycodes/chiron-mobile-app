@@ -2,13 +2,14 @@ import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
 
+import { CartTabIcon } from "@/components/CartTabIcon";
 import { HapticTab } from "@/components/HapticTab";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { AuthStore } from "@/store/AuthStore";
 import { UserRole } from "@/types";
-import { AntDesign, FontAwesome, SimpleLineIcons } from "@expo/vector-icons";
+import { AntDesign, FontAwesome, MaterialIcons } from "@expo/vector-icons";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -47,6 +48,15 @@ export default function TabLayout() {
             },
           },
           {
+            name: "pharmacy/index" as const,
+            options: {
+              title: "Pharmacy",
+              tabBarIcon: ({ color }: { color: string }) => (
+                <MaterialIcons size={20} name="local-pharmacy" color={color} />
+              ),
+            },
+          },
+          {
             name: "wishlist" as const,
             options: {
               title: "WishList",
@@ -60,7 +70,7 @@ export default function TabLayout() {
             options: {
               title: "Cart",
               tabBarIcon: ({ color }: { color: string }) => (
-                <SimpleLineIcons size={20} name="handbag" color={color} />
+                <CartTabIcon color={color} />
               ),
             },
           },
@@ -129,10 +139,11 @@ export default function TabLayout() {
 
   const hiddenScreens = [
     { name: "search/index" as const },
-    { name: "pharmacy/index" as const },
     { name: "doctors/[id]" as const },
     { name: "appointments/index" as const },
     { name: "pharmacy/[id]" as const },
+    { name: "pharmacy/drugs" as const },
+    
   ];
 
   return (
