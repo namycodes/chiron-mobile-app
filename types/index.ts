@@ -412,6 +412,15 @@ export interface HealthPersonnelResponse {
   statusCode: number
 }
 
+
+export interface DrugStoresResponse {
+  data: {
+    stores: DrugStore[]
+  },
+  message: string,
+  statusCode: number
+}
+
 export interface HealthPersonnelDetailsResponse {
   data: {
     personnel: HealthPersonnelViewModel
@@ -419,4 +428,57 @@ export interface HealthPersonnelDetailsResponse {
   message: string,
   statusCode: number
 }
+
+export interface DrugStoreDetailsResponse {
+  data: {
+    store: DrugStoreViewModel
+  },
+  message: string,
+  statusCode: number
+}
+
+// Drug Types
+export interface Drug {
+  id: string;
+  name: string;
+  description: string;
+  manufacturer: string;
+  category: string;
+  price: number;
+  stockQuantity: number;
+  imageUrl?: string;
+  requiresPrescription: boolean;
+  dosage: string;
+  sideEffects: string[];
+  contraindications: string[];
+  activeIngredients: string[];
+  expiryDate: string;
+  batchNumber: string;
+  isAvailable: boolean;
+  drugStoreId: string;
+}
+
+export interface DrugCategory {
+  id: string;
+  name: string;
+  description: string;
+  iconUrl?: string;
+}
+
+export interface DrugResponse {
+  data: {
+    drugs: Drug[]
+  },
+  message: string,
+  statusCode: number
+}
+
+export interface DrugDetailsResponse {
+  data: {
+    drug: Drug
+  },
+  message: string,
+  statusCode: number
+}
+
 

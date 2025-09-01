@@ -6,14 +6,14 @@ import { HapticTab } from "@/components/HapticTab";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { AuthStore } from "@/store/AuthStore";
 import { UserRole } from "@/types";
 import { AntDesign, FontAwesome, SimpleLineIcons } from "@expo/vector-icons";
-import { AuthStore } from "@/store/AuthStore";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const {token, role} = AuthStore()
-console.log("User role: ", role)
+  const { token, role } = AuthStore();
+  console.log("User role: ", role);
   if (!token) {
     return <Redirect href="/(auth)/signin" />;
   }
@@ -132,6 +132,7 @@ console.log("User role: ", role)
     { name: "pharmacy/index" as const },
     { name: "doctors/[id]" as const },
     { name: "appointments/index" as const },
+    { name: "pharmacy/[id]" as const },
   ];
 
   return (

@@ -1,6 +1,8 @@
 import {
-  DrugStore,
-  DrugStoreViewModel,
+  DrugDetailsResponse,
+  DrugResponse,
+  DrugStoreDetailsResponse,
+  DrugStoresResponse,
   HealthPersonnelDetailsResponse,
   HealthPersonnelResponse,
 } from "@/types";
@@ -10,7 +12,11 @@ export const HealthService = {
   getPersonnel: () => ApiRequest<HealthPersonnelResponse>("/health/personnel"),
   getPersonnelById: (id: string) =>
     ApiRequest<HealthPersonnelDetailsResponse>(`/health/personnel/${id}`),
-  getDrugStores: () => ApiRequest<DrugStore>("/health/stores"),
+  getDrugStores: () => ApiRequest<DrugStoresResponse>("/health/stores"),
   getDrugStoreById: (id: string) =>
-    ApiRequest<DrugStoreViewModel>(`/health/stores/${id}`),
+    ApiRequest<DrugStoreDetailsResponse>(`/health/stores/${id}`),
+  getDrugsByStoreId: (storeId: string) =>
+    ApiRequest<DrugResponse>(`/health/stores/${storeId}/drugs`),
+  getDrugById: (drugId: string) =>
+    ApiRequest<DrugDetailsResponse>(`/drugs/${drugId}`),
 };
