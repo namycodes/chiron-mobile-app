@@ -1,3 +1,4 @@
+import { WishlistHeaderIcon } from "@/components/WishlistHeaderIcon";
 import { Colors, grayLightBorder } from "@/constants/Colors";
 import { HealthStore } from "@/store/HealthStore";
 import {
@@ -134,9 +135,12 @@ export default function HomeScreen() {
             <EvilIcons name="location" size={20} color={Colors.light.primary} />
             <Text style={styles.locationText}>Lusaka, Zambia</Text>
           </View>
-          <TouchableOpacity style={styles.notificationIcon}>
-            <Feather name="bell" size={22} color={Colors.light.primary} />
-          </TouchableOpacity>
+          <View style={styles.headerIcons}>
+            <WishlistHeaderIcon />
+            <TouchableOpacity style={styles.notificationIcon}>
+              <Feather name="bell" size={22} color={Colors.light.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Welcome Message */}
@@ -376,6 +380,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     color: "#333",
+  },
+  headerIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   notificationIcon: {
     padding: 8,

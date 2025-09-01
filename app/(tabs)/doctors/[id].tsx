@@ -8,6 +8,7 @@ import Divider from "@/components/Divider";
 import { grayLightBorder, grayMediumBorder } from "@/constants/Colors";
 import { CardStyles, textStyles } from "@/constants/GlobalStyles";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { AppointmentStore } from "@/store/AppointmentStore";
 import { HealthStore } from "@/store/HealthStore";
 import {
   FontAwesome,
@@ -19,8 +20,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
+  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -127,6 +130,16 @@ export default function DoctorDetailsScreen() {
   const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const {
+    getAppointmentSessions,
+    appointmentSessions,
+    appointmentSessionsLoading,
+    appointmentSessionsError,
+    scheduleAppointment,
+    appointmentCreating,
+    appointmentCreatingError,
+  } = AppointmentStore();
 
   const scrollY = useSharedValue(0);
   const bottomSheetRef = useRef<ChironBottomSheetHandles>(null);
@@ -143,6 +156,12 @@ export default function DoctorDetailsScreen() {
       getHealthPersonnelById(id);
     }
   }, [id]);
+
+  const fetchAppointmentSessions = async (sessionDate: Date) => {
+    if (id && typeof id === "string") {
+      await getAppointmentSessions(id, sessionDate);
+    }
+  };
 
   const handleOpenActionSheet = () => {
     setIsActionSheetVisible(true);
@@ -201,6 +220,77 @@ export default function DoctorDetailsScreen() {
         return "#F44336";
       default:
         return textSecondaryColor;
+    }
+  };
+
+  const getSessionIcon = (sessionName: string) => {
+    const name = sessionName.toLowerCase();
+    if (name.includes("morning")) {
+      return "sunny-outline";
+    } else if (name.includes("afternoon")) {
+      return "partly-sunny-outline";
+    } else if (name.includes("evening") || name.includes("night")) {
+      return "moon-outline";
+    } else {
+      return "time-outline";
+    }
+  };
+
+  const getSelectedSession = () => {
+    return appointmentSessions.find(
+      (session) => session.id === selectedTimeSlot
+    );
+  };
+
+  const getSelectedDateInfo = () => {
+    const dates = getAvailableDates();
+    return dates.find((date) => date.id === selectedDate);
+  };
+
+  const handleConfirmAppointment = () => {
+    if (selectedDate && selectedTimeSlot && personnelDetails) {
+      setShowConfirmationModal(true);
+    }
+  };
+
+  const handleScheduleAppointment = async () => {
+    if (!selectedDate || !selectedTimeSlot || !personnelDetails) return;
+
+    const selectedSession = getSelectedSession();
+    const dateInfo = getSelectedDateInfo();
+
+    if (!selectedSession || !dateInfo) return;
+
+    const appointmentData = {
+      personnelId: personnelDetails.id,
+      appointmentDate: new Date(selectedDate),
+      appointmentTimeSlots: selectedSession.timeSlots,
+      appointmentLocation: personnelDetails.hospitalName,
+    };
+
+    try {
+      await scheduleAppointment(appointmentData);
+      setShowConfirmationModal(false);
+      handleCloseActionSheet();
+
+      Alert.alert(
+        "Appointment Scheduled!",
+        "Your appointment has been successfully scheduled. You will receive a confirmation shortly.",
+        [
+          {
+            text: "View Appointments",
+            onPress: () => router.push("/(tabs)/appointments"),
+          },
+          { text: "OK" },
+        ]
+      );
+    } catch (error) {
+      Alert.alert(
+        "Scheduling Failed",
+        appointmentCreatingError ||
+          "Failed to schedule appointment. Please try again.",
+        [{ text: "OK" }]
+      );
     }
   };
 
@@ -610,7 +700,7 @@ export default function DoctorDetailsScreen() {
           <ChironBottomSheet
             handleVisible={false}
             initialIndex={1}
-            snapPoints={["10%"]}
+            snapPoints={[Platform.OS === "ios" ? "21.5%" : "10%"]}
             panDownClose={false}
           >
             <View
@@ -619,6 +709,7 @@ export default function DoctorDetailsScreen() {
                 justifyContent: "space-between",
                 alignItems: "center",
                 padding: 20,
+                paddingBottom: Platform.OS === "ios" ? 34 : 20,
               }}
             >
               <View>
@@ -773,6 +864,7 @@ export default function DoctorDetailsScreen() {
                       },
                     ]}
                     onPress={() => {
+                      fetchAppointmentSessions(new Date(dateItem.fullDate));
                       setSelectedDate(dateItem.id);
                       setSelectedTimeSlot(null); // Reset time slot when date changes
                     }}
@@ -842,81 +934,181 @@ export default function DoctorDetailsScreen() {
                 <Text style={[styles.slotsTitle, { color: textColor }]}>
                   Available Sessions
                 </Text>
-                <View style={styles.sessionsContainer}>
-                  {Object.entries(availableTimeSlots).map(([key, session]) => (
-                    <TouchableOpacity
-                      key={key}
+                {appointmentSessionsLoading ? (
+                  <View style={{ alignItems: "center", padding: 20 }}>
+                    <ActivityIndicator size="small" color={primaryColor} />
+                    <Text style={[{ color: textSecondaryColor, marginTop: 8 }]}>
+                      Loading sessions...
+                    </Text>
+                  </View>
+                ) : appointmentSessionsError ? (
+                  <View style={{ alignItems: "center", padding: 20 }}>
+                    <Ionicons
+                      name="alert-circle-outline"
+                      size={32}
+                      color="#F44336"
+                    />
+                    <Text
                       style={[
-                        styles.sessionButton,
                         {
-                          backgroundColor:
-                            selectedTimeSlot === key
-                              ? primaryColor
-                              : surfaceColor,
-                          borderColor:
-                            selectedTimeSlot === key
-                              ? primaryColor
-                              : borderColor,
+                          color: "#F44336",
+                          textAlign: "center",
+                          marginTop: 8,
+                          marginBottom: 12,
                         },
                       ]}
-                      onPress={() => setSelectedTimeSlot(key)}
                     >
-                      <View style={styles.sessionHeader}>
-                        <Ionicons
-                          name={session.icon as any}
-                          size={20}
-                          color={
-                            selectedTimeSlot === key ? "white" : primaryColor
-                          }
-                        />
-                        <Text
-                          style={[
-                            styles.sessionLabel,
-                            {
-                              color:
-                                selectedTimeSlot === key ? "white" : textColor,
-                              fontWeight: "600",
-                              marginLeft: 8,
-                            },
-                          ]}
-                        >
-                          {session.label}
-                        </Text>
-                      </View>
-                      <Text
+                      {appointmentSessionsError}
+                    </Text>
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: primaryColor,
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                      }}
+                      onPress={() => {
+                        if (selectedDate) {
+                          fetchAppointmentSessions(new Date(selectedDate));
+                        }
+                      }}
+                    >
+                      <Text style={{ color: "white", fontWeight: "600" }}>
+                        Try Again
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : appointmentSessions && appointmentSessions.length > 0 ? (
+                  <View style={styles.sessionsContainer}>
+                    {appointmentSessions.map((session) => (
+                      <TouchableOpacity
+                        key={session.id}
                         style={[
-                          styles.sessionTime,
+                          styles.sessionButton,
                           {
-                            color:
-                              selectedTimeSlot === key
-                                ? "white"
-                                : textSecondaryColor,
-                            fontSize: 13,
-                            marginTop: 4,
+                            backgroundColor:
+                              selectedTimeSlot === session.id
+                                ? primaryColor
+                                : surfaceColor,
+                            borderColor:
+                              selectedTimeSlot === session.id
+                                ? primaryColor
+                                : borderColor,
                           },
                         ]}
+                        onPress={() => setSelectedTimeSlot(session.id)}
                       >
-                        {session.time}
-                      </Text>
-                      {selectedTimeSlot === key && (
-                        <View style={styles.timeSlots}>
-                          {session.slots.map((slot, index) => (
-                            <View key={index} style={styles.timeSlot}>
-                              <Text
+                        <View style={styles.sessionHeader}>
+                          <Ionicons
+                            name={getSessionIcon(session.name)}
+                            size={20}
+                            color={
+                              selectedTimeSlot === session.id
+                                ? "white"
+                                : primaryColor
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.sessionLabel,
+                              {
+                                color:
+                                  selectedTimeSlot === session.id
+                                    ? "white"
+                                    : textColor,
+                                fontWeight: "600",
+                                marginLeft: 8,
+                              },
+                            ]}
+                          >
+                            {session.name}
+                          </Text>
+                        </View>
+                        {session.timeSlots && session.timeSlots.length > 0 && (
+                          <View style={styles.timeSlots}>
+                            {session.timeSlots.map((slot, index) => (
+                              <View
+                                key={index}
                                 style={[
-                                  styles.timeSlotText,
-                                  { color: "white", fontSize: 12 },
+                                  styles.timeSlot,
+                                  {
+                                    backgroundColor:
+                                      selectedTimeSlot === session.id
+                                        ? "rgba(255,255,255,0.2)"
+                                        : `${primaryColor}20`,
+                                  },
                                 ]}
                               >
-                                {slot}
-                              </Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                                <Text
+                                  style={[
+                                    styles.timeSlotText,
+                                    {
+                                      color:
+                                        selectedTimeSlot === session.id
+                                          ? "white"
+                                          : primaryColor,
+                                      fontSize: 12,
+                                      fontWeight: "500",
+                                    },
+                                  ]}
+                                >
+                                  {slot}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                        {(!session.timeSlots ||
+                          session.timeSlots.length === 0) &&
+                          selectedTimeSlot === session.id && (
+                            <Text
+                              style={[
+                                {
+                                  color: "white",
+                                  fontSize: 12,
+                                  marginTop: 8,
+                                  fontStyle: "italic",
+                                },
+                              ]}
+                            >
+                              No specific time slots available
+                            </Text>
+                          )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={{ alignItems: "center", padding: 20 }}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={32}
+                      color={textSecondaryColor}
+                    />
+                    <Text
+                      style={[
+                        {
+                          color: textSecondaryColor,
+                          textAlign: "center",
+                          marginTop: 8,
+                        },
+                      ]}
+                    >
+                      No sessions available for the selected date
+                    </Text>
+                    <Text
+                      style={[
+                        {
+                          color: textSecondaryColor,
+                          textAlign: "center",
+                          marginTop: 4,
+                          fontSize: 12,
+                        },
+                      ]}
+                    >
+                      Please try selecting a different date
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -937,17 +1129,7 @@ export default function DoctorDetailsScreen() {
                     ? "Confirm Appointment"
                     : "Select Date & Time"
                 }
-                onPress={() => {
-                  if (selectedDate && selectedTimeSlot) {
-                    handleCloseActionSheet();
-                    // Navigate to booking confirmation
-                    console.log(
-                      "Booking appointment for:",
-                      selectedDate,
-                      selectedTimeSlot
-                    );
-                  }
-                }}
+                onPress={handleConfirmAppointment}
                 variant="primary"
                 style={{
                   ...styles.scheduleButton,
@@ -959,6 +1141,235 @@ export default function DoctorDetailsScreen() {
           </View>
         )}
       </ChironBottomSheet>
+
+      {/* Appointment Confirmation Modal */}
+      <Modal
+        visible={showConfirmationModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowConfirmationModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[styles.modalContent, { backgroundColor: surfaceColor }]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>
+                Confirm Appointment
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowConfirmationModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={textSecondaryColor} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.confirmationDetails}>
+              {/* Doctor Info */}
+              <View style={styles.confirmationRow}>
+                <View
+                  style={[
+                    styles.confirmationIcon,
+                    { backgroundColor: `${primaryColor}20` },
+                  ]}
+                >
+                  <Ionicons name="person" size={20} color={primaryColor} />
+                </View>
+                <View style={styles.confirmationText}>
+                  <Text
+                    style={[
+                      styles.confirmationLabel,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    Doctor
+                  </Text>
+                  <Text
+                    style={[styles.confirmationValue, { color: textColor }]}
+                  >
+                    Dr. {personnelDetails?.firstName}{" "}
+                    {personnelDetails?.lastName}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.confirmationSubValue,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    {personnelDetails?.specialty}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Date Info */}
+              <View style={styles.confirmationRow}>
+                <View
+                  style={[
+                    styles.confirmationIcon,
+                    { backgroundColor: `${primaryColor}20` },
+                  ]}
+                >
+                  <Ionicons name="calendar" size={20} color={primaryColor} />
+                </View>
+                <View style={styles.confirmationText}>
+                  <Text
+                    style={[
+                      styles.confirmationLabel,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    Date
+                  </Text>
+                  <Text
+                    style={[styles.confirmationValue, { color: textColor }]}
+                  >
+                    {getSelectedDateInfo()?.day}, {getSelectedDateInfo()?.month}{" "}
+                    {getSelectedDateInfo()?.date}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Session Info */}
+              <View style={styles.confirmationRow}>
+                <View
+                  style={[
+                    styles.confirmationIcon,
+                    { backgroundColor: `${primaryColor}20` },
+                  ]}
+                >
+                  <Ionicons
+                    name={getSessionIcon(getSelectedSession()?.name || "")}
+                    size={20}
+                    color={primaryColor}
+                  />
+                </View>
+                <View style={styles.confirmationText}>
+                  <Text
+                    style={[
+                      styles.confirmationLabel,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    Session
+                  </Text>
+                  <Text
+                    style={[styles.confirmationValue, { color: textColor }]}
+                  >
+                    {getSelectedSession()?.name}
+                  </Text>
+                  {getSelectedSession()?.timeSlots &&
+                    getSelectedSession()!.timeSlots.length > 0 && (
+                      <Text
+                        style={[
+                          styles.confirmationSubValue,
+                          { color: textSecondaryColor },
+                        ]}
+                      >
+                        Available slots:{" "}
+                        {getSelectedSession()!.timeSlots.join(", ")}
+                      </Text>
+                    )}
+                </View>
+              </View>
+
+              {/* Location Info */}
+              <View style={styles.confirmationRow}>
+                <View
+                  style={[
+                    styles.confirmationIcon,
+                    { backgroundColor: `${primaryColor}20` },
+                  ]}
+                >
+                  <Ionicons name="location" size={20} color={primaryColor} />
+                </View>
+                <View style={styles.confirmationText}>
+                  <Text
+                    style={[
+                      styles.confirmationLabel,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    Location
+                  </Text>
+                  <Text
+                    style={[styles.confirmationValue, { color: textColor }]}
+                  >
+                    {personnelDetails?.hospitalName}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.confirmationSubValue,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    Chalala, Lusaka
+                  </Text>
+                </View>
+              </View>
+
+              {/* Fee Info */}
+              <View style={styles.confirmationRow}>
+                <View
+                  style={[
+                    styles.confirmationIcon,
+                    { backgroundColor: `${primaryColor}20` },
+                  ]}
+                >
+                  <Ionicons name="card" size={20} color={primaryColor} />
+                </View>
+                <View style={styles.confirmationText}>
+                  <Text
+                    style={[
+                      styles.confirmationLabel,
+                      { color: textSecondaryColor },
+                    ]}
+                  >
+                    Consultation Fee
+                  </Text>
+                  <Text
+                    style={[
+                      styles.confirmationValue,
+                      { color: textColor, fontWeight: "bold" },
+                    ]}
+                  >
+                    K{personnelDetails?.rate || "0"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {appointmentCreatingError && (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={16} color="#F44336" />
+                <Text style={styles.errorBannerText}>
+                  {appointmentCreatingError}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.modalActions}>
+              <ChironButton
+                title="Cancel"
+                onPress={() => setShowConfirmationModal(false)}
+                variant="outline"
+                style={styles.modalCancelButton}
+                disabled={appointmentCreating}
+              />
+              <ChironButton
+                title={
+                  appointmentCreating ? "Scheduling..." : "Schedule Appointment"
+                }
+                onPress={handleScheduleAppointment}
+                variant="primary"
+                style={styles.modalConfirmButton}
+                disabled={appointmentCreating}
+                loading={appointmentCreating}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1316,6 +1727,7 @@ const styles = StyleSheet.create({
   bottomSheetActions: {
     flexDirection: "row",
     gap: 12,
+    paddingBottom: 50,
   },
   messageButton: {
     flex: 1,
@@ -1389,16 +1801,114 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     marginTop: 12,
-    gap: 8,
+    paddingHorizontal: 4,
   },
   timeSlot: {
-    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
   },
   timeSlotText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  // Confirmation Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    borderRadius: 16,
+    maxWidth: 400,
+    width: "100%",
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: grayLightBorder,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  confirmationDetails: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  confirmationRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  confirmationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  confirmationText: {
+    flex: 1,
+  },
+  confirmationLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  confirmationValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  confirmationSubValue: {
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF3F3",
+    borderColor: "#F44336",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
+  errorBannerText: {
+    color: "#F44336",
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },
+  modalActions: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+  },
+  modalConfirmButton: {
+    flex: 2,
   },
 });

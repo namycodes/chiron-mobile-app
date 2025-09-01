@@ -57,11 +57,11 @@ export default function TabLayout() {
             },
           },
           {
-            name: "wishlist" as const,
+            name: "appointments/index" as const,
             options: {
-              title: "WishList",
+              title: "Appointments",
               tabBarIcon: ({ color }: { color: string }) => (
-                <AntDesign size={20} name="hearto" color={color} />
+                <FontAwesome size={20} name="calendar" color={color} />
               ),
             },
           },
@@ -80,7 +80,7 @@ export default function TabLayout() {
       case UserRole.HEALTH_PERSONNEL:
         roleScreens = [
           {
-            name: "appointments" as const,
+            name: "appointments/index" as const,
             options: {
               title: "Appointments",
               tabBarIcon: ({ color }: { color: string }) => (
@@ -140,10 +140,10 @@ export default function TabLayout() {
   const hiddenScreens = [
     { name: "search/index" as const },
     { name: "doctors/[id]" as const },
-    { name: "appointments/index" as const },
+    { name: "appointments/[id]" as const },
     { name: "pharmacy/[id]" as const },
     { name: "pharmacy/drugs" as const },
-    
+    { name: "wishlist" as const },
   ];
 
   return (

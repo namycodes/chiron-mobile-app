@@ -609,3 +609,50 @@ export interface CheckoutResponse {
 }
 
 
+
+
+export interface CreateAppointment {
+  appointmentDate: Date,
+  appointmentTimeSlots: string[],
+  appointmentLocation: string,
+  personnelId: string,
+}
+
+export interface Appointment {
+  id: string
+	appointmentStatus  : string    
+	appointmentDate    : string   
+	appointmentTime     :string    
+  appointmentLocation: string 
+  appointmentTimeSlots: string[]
+}
+
+export interface AppointmentSession {
+  id: string,
+  name: string,
+  timeSlots: string[]
+}
+
+export interface AppointmentSessionsResponse {
+  data: {
+    sessions: AppointmentSession[],
+  },
+  message: string, 
+  statusCode: number
+}
+
+export interface AppointmentResponse {
+  data: {
+    appointment: Appointment
+  },
+  message: string, 
+  statusCode: number
+}
+
+export interface AppointmentsResponse {
+  data: {
+    appointments: Appointment[]
+  },
+  message: string, 
+  statusCode: number
+}
