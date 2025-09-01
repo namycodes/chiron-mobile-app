@@ -60,6 +60,16 @@ const initialCategories = [
     ),
   },
   {
+    name: "Drugs",
+    icon: (
+      <MaterialIcons
+        name="local-pharmacy"
+        size={20}
+        color={Colors.light.primary}
+      />
+    ),
+  },
+  {
     name: "Hospital",
     icon: (
       <FontAwesome5 name="hospital" size={20} color={Colors.light.primary} />
@@ -183,8 +193,14 @@ export default function HomeScreen() {
                     router.push("/(tabs)/doctors");
                   } else if (category.name === "Pharmacy") {
                     router.push("/(tabs)/pharmacy");
+                  } else if (category.name === "Appointment") {
+                    router.push("/(tabs)/appointments");
+                  } else if (category.name === "Drugs") {
+                    router.push("/(tabs)/pharmacy/all-drugs");
+                  } else if (category.name === "Hospital") {
+                    // TODO: Add hospital navigation when implemented
+                    console.log("Hospital navigation not yet implemented");
                   }
-                  // Add more navigation cases as needed
                 }}
               >
                 <View style={styles.categoryIconContainer}>

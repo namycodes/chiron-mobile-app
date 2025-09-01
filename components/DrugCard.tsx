@@ -142,6 +142,7 @@ export const DrugCard: React.FC<DrugCardProps> = ({ drug, onPress }) => {
             onPress={handleAddToCart}
             disabled={stockStatus.text === "Out of Stock"}
           >
+ 
             <Ionicons name="cart" size={16} color="white" />
           </TouchableOpacity>
 

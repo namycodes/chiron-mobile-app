@@ -27,11 +27,15 @@ interface HealthState {
   drugDetails: Drug | null;
   loadingDrugDetails: boolean;
   errorDrugDetails: string | null;
+  allDrugs: Drug[];
+  loadingAllDrugs: boolean;
+  errorAllDrugs: string | null;
   getHealthPersonnel: () => Promise<void>;
   getHealthDrugStores: () => Promise<void>;
   getHealthPersonnelById: (id: string) => Promise<void>;
   getDrugStoreById: (id: string) => Promise<void>;
   getDrugsByStoreId: (storeId: string) => Promise<void>;
+  getAllDrugs: () => Promise<void>;
   getDrugById: (drugId: string) => Promise<void>;
 }
 
@@ -54,6 +58,9 @@ export const HealthStore = create<HealthState>((set, get) => ({
   drugDetails: null,
   loadingDrugDetails: false,
   errorDrugDetails: null,
+  allDrugs: [],
+  loadingAllDrugs: false,
+  errorAllDrugs: null,
 
   getHealthPersonnel: async () => {
     set({ loadingPersonnel: true, errorPersonnel: null });
@@ -131,12 +138,30 @@ export const HealthStore = create<HealthState>((set, get) => ({
         errorDrugs: null,
         drugs: data.drugs || [],
       });
-      console.log("Drugs: ", get().drugs)
+      console.log("Drugs: ", get().drugs);
     } catch (error) {
       console.error("Error fetching drugs:", error);
       set({
         loadingDrugs: false,
         errorDrugs: "Failed to fetch drugs",
+      });
+    }
+  },
+  getAllDrugs: async () => {
+    set({ loadingAllDrugs: true, errorAllDrugs: null });
+    try {
+      const { data } = await HealthService.getAllDrugs();
+      set({
+        loadingAllDrugs: false,
+        errorAllDrugs: null,
+        allDrugs: data.drugs || [],
+      });
+      console.log("All drugs: ", get().allDrugs);
+    } catch (error) {
+      console.error("Error fetching all drugs:", error);
+      set({
+        loadingAllDrugs: false,
+        errorAllDrugs: "Failed to fetch all drugs",
       });
     }
   },

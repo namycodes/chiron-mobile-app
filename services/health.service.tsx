@@ -17,6 +17,7 @@ export const HealthService = {
     ApiRequest<DrugStoreDetailsResponse>(`/health/stores/${id}`),
   getDrugsByStoreId: (storeId: string) =>
     ApiRequest<DrugResponse>(`/health/stores/${storeId}/drugs`),
+  getAllDrugs: () => ApiRequest<DrugResponse>("/drugs"),
   getDrugById: (drugId: string) =>
     ApiRequest<DrugDetailsResponse>(`/drugs/${drugId}`),
 };

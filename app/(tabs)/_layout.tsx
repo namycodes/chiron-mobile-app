@@ -143,6 +143,7 @@ export default function TabLayout() {
     { name: "appointments/[id]" as const },
     { name: "pharmacy/[id]" as const },
     { name: "pharmacy/drugs" as const },
+    { name: "pharmacy/all-drugs" as const },
     { name: "wishlist" as const },
   ];
 
