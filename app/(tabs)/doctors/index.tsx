@@ -176,7 +176,7 @@ export default function Doctors() {
 
   const renderDoctor = ({ item: doctor }: { item: HealthPersonnel }) => (
     <TouchableOpacity
-      onPress={() => router.push(`/doctors/${doctor.id}`)}
+      onPress={() => router.push(`/(tabs)/doctors/${doctor.id}`)}
       activeOpacity={0.9}
     >
       <ChironCard style={styles.doctorCard} variant="default">
@@ -570,7 +570,7 @@ export default function Doctors() {
                   setIsBottomSheetVisible(false);
 
                   if (selectedDoctor) {
-                    router.push(`/doctors/${selectedDoctor.id}`);
+                    router.push(`/(tabs)/doctors/${selectedDoctor.id}`);
                   }
                 }}
                 variant="primary"

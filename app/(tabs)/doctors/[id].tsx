@@ -359,7 +359,7 @@ export default function DoctorDetailsScreen() {
           />
           <ChironButton
             title="Go Back"
-            onPress={() => router.back()}
+            onPress={() => router.push("/(tabs)/doctors")}
             variant="outline"
             style={styles.retryButton}
           />
@@ -383,7 +383,7 @@ export default function DoctorDetailsScreen() {
           </Text>
           <ChironButton
             title="Go Back"
-            onPress={() => router.back()}
+            onPress={() => router.push("/(tabs)/doctors")}
             variant="primary"
             style={styles.retryButton}
           />
@@ -431,7 +431,7 @@ export default function DoctorDetailsScreen() {
             >
               <TouchableOpacity
                 style={styles.backButton}
-                onPress={() => router.back()}
+                onPress={() => router.push("/(tabs)/doctors")}
               >
                 <Ionicons name="arrow-back" size={24} color={textColor} />
               </TouchableOpacity>
@@ -467,7 +467,7 @@ export default function DoctorDetailsScreen() {
               <View style={styles.imageOverlay}>
                 <TouchableOpacity
                   style={styles.backButtonOverlay}
-                  onPress={() => router.back()}
+                  onPress={() => router.push("/(tabs)/doctors")}
                 >
                   <Ionicons name="arrow-back" size={24} color="white" />
                 </TouchableOpacity>

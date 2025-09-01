@@ -176,7 +176,7 @@ export default function PharmacyDetailsScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push("/(tabs)/pharmacy")}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />

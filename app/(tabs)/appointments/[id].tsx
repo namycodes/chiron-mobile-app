@@ -37,7 +37,7 @@ export default function AppointmentDetailsScreen() {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => router.push("/(tabs)/appointments")}
           >
             <Ionicons name="arrow-back" size={24} color={textColor} />
           </TouchableOpacity>
@@ -56,7 +56,7 @@ export default function AppointmentDetailsScreen() {
           </Text>
           <ChironButton
             title="Go Back"
-            onPress={() => router.back()}
+            onPress={() => router.push("/(tabs)/appointments")}
             variant="primary"
             style={styles.retryButton}
           />
@@ -141,7 +141,12 @@ export default function AppointmentDetailsScreen() {
             Alert.alert(
               "Appointment Cancelled",
               "Your appointment has been cancelled successfully.",
-              [{ text: "OK", onPress: () => router.back() }]
+              [
+                {
+                  text: "OK",
+                  onPress: () => router.push("/(tabs)/appointments"),
+                },
+              ]
             );
           },
         },
@@ -191,7 +196,7 @@ export default function AppointmentDetailsScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => router.push("/(tabs)/appointments")}
         >
           <Ionicons name="arrow-back" size={24} color={textColor} />
         </TouchableOpacity>
@@ -281,7 +286,7 @@ export default function AppointmentDetailsScreen() {
                   Time Slots
                 </Text>
                 <Text style={[styles.infoValue, { color: textColor }]}>
-                  {appointment.appointmentTimeSlots.join(', ')}
+                  {appointment.appointmentTimeSlots.join(", ")}
                 </Text>
               </View>
             </View>
